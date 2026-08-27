@@ -1,0 +1,6 @@
+# .cmd 必须 CRLF 换行，否则 cmd.exe 解析会出错（历史踩坑）
+*.cmd text eol=crlf
+
+# ps1/md 保持仓库内 LF，检出时由 git 按平台处理
+*.ps1 text eol=crlf
+*.md text eol=lf

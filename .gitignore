@@ -1,0 +1,13 @@
+# 内部工作数据（AI 会话记忆等），不发布
+.workbuddy/
+
+# 运行时产物
+last-run-output.txt
+verify-*.txt
+sync.log
+*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini

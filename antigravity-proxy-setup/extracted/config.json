@@ -1,0 +1,68 @@
+{
+  "_version": "2.2",
+  "proxy": {
+    "port": 7688,
+    "type": "http",
+    "host": "127.0.0.1"
+  },
+  "child_injection": true,
+  "child_injection_exclude": [],
+  "log_level": "info",
+  "proxy_rules": {
+    "routing": {
+      "default_action": "proxy",
+      "use_default_private": true,
+      "enabled": true,
+      "priority_mode": "order",
+      "rules": []
+    },
+    "ipv6_mode": "proxy",
+    "udp_mode": "block",
+    "dns_mode": "direct",
+    "allowed_ports": [
+      80,
+      443
+    ],
+    "udp_fallback": "block"
+  },
+  "fake_ip": {
+    "enabled": true,
+    "cidr": "198.18.0.0/15"
+  },
+  "timeout": {
+    "send": 5000,
+    "recv": 5000,
+    "connect": 5000
+  },
+  "target_processes": [
+    "agy.exe",
+    "language_server.exe",
+    "language_server_windows",
+    "Antigravity.exe",
+    "Antigravity IDE.exe",
+    "node.exe"
+  ],
+  "_build": {
+    "arch": "x64",
+    "date": "2026-06-19 17:40:47",
+    "config": "Release"
+  },
+  "updates": {
+    "enabled": false,
+    "check_delay_ms": 15000,
+    "mirrors": [
+      "https://wget.la/",
+      "https://rapidgit.jjda.de5.net/",
+      "https://fastgit.cc/",
+      "https://gitproxy.mrhjx.cn/",
+      "https://github.boki.moe/",
+      "https://github.ednovas.xyz/"
+    ],
+    "allow_insecure_mirrors": true,
+    "notify_once": true,
+    "timeout_ms": 5000
+  },
+  "traffic_logging": false,
+  "_comment": "Antigravity-Proxy 配置文件",
+  "child_injection_mode": "filtered"
+}

@@ -1,0 +1,3711 @@
+<!doctype html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Antigravity-Proxy 可视化配置工具</title>
+
+  <!-- Tailwind CSS (CDN, required) -->
+  <script>
+    // Tailwind 配置：启用 class 方式的暗色模式；其余使用 Tailwind 默认色板（避免自定义 CSS）
+    window.tailwind = window.tailwind || {};
+    window.tailwind.config = { darkMode: "class" };
+  </script>
+  <script src="https://cdn.tailwindcss.com/"></script>
+
+  <!-- Font Awesome (CDN, required) -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    referrerpolicy="no-referrer"
+  />
+</head>
+
+<body class="min-h-screen bg-gradient-to-br from-stone-100 via-slate-100 to-zinc-100 font-['Bahnschrift','Segoe_UI','PingFang_SC',sans-serif] text-slate-900 dark:from-slate-950 dark:via-zinc-950 dark:to-slate-900 dark:text-slate-100">
+  <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div class="absolute -left-24 -top-20 h-80 w-80 rounded-full bg-teal-400/20 blur-3xl dark:bg-teal-500/10"></div>
+    <div class="absolute -right-20 top-1/3 h-72 w-72 rounded-full bg-amber-300/20 blur-3xl dark:bg-amber-400/10"></div>
+    <div class="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-slate-300/30 blur-3xl dark:bg-slate-700/20"></div>
+  </div>
+
+  <div id="app" class="min-h-screen">
+    <!-- 顶部栏 -->
+    <header class="sticky top-0 z-40 border-b border-slate-200/70 bg-white/75 backdrop-blur-xl dark:border-slate-800/70 dark:bg-slate-950/70">
+      <div class="mx-auto flex max-w-[1400px] flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between">
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-500/10 ring-1 ring-slate-900/5 dark:bg-teal-400/10 dark:ring-white/10">
+            <i class="fa-solid fa-gear text-teal-600 dark:text-teal-300"></i>
+          </div>
+          <div class="leading-tight">
+            <div class="text-xs text-slate-500 dark:text-slate-400">Antigravity-Proxy</div>
+            <h1 class="text-lg font-semibold">可视化配置工具</h1>
+          </div>
+
+          <span id="dirtyBadge" class="hidden items-center rounded-full bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-500/30 dark:text-amber-200">
+            已修改
+          </span>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:bg-slate-900/70" title="导入 config.json（仅读取本地文件，不会上传）">
+            <i class="fa-solid fa-file-import text-slate-500 dark:text-slate-400"></i>
+            <span>导入</span>
+            <input id="fileInput" class="hidden" type="file" accept="application/json" />
+          </label>
+
+          <button id="btnExport" class="inline-flex items-center gap-2 rounded-lg bg-teal-700 px-3 py-2 text-sm font-semibold text-white shadow-md shadow-teal-700/20 transition duration-200 hover:-translate-y-0.5 hover:bg-teal-600 active:translate-y-0 disabled:cursor-not-allowed disabled:bg-slate-400 disabled:shadow-none dark:disabled:bg-slate-700" type="button" title="导出 config.json">
+            <i class="fa-solid fa-download"></i>
+            <span>导出</span>
+          </button>
+
+          <button id="btnOpenPresets" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:bg-slate-900/70" type="button" title="快速模板预设">
+            <i class="fa-solid fa-wand-magic-sparkles text-slate-500 dark:text-slate-400"></i>
+            <span>模板</span>
+          </button>
+
+          <button id="btnToggleTheme" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900/40 dark:hover:bg-slate-900/70" type="button" title="亮色/暗色切换">
+            <i id="themeIcon" class="fa-solid fa-moon text-slate-500 dark:text-slate-400"></i>
+            <span id="themeText">暗色</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-[1400px] px-4 py-6">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+        <!-- 左侧导航 -->
+        <aside class="rounded-2xl border border-slate-200 bg-white/85 shadow-md shadow-slate-900/5 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/40 dark:shadow-black/20">
+          <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div class="text-xs font-semibold tracking-widest text-slate-500 dark:text-slate-400">NAV</div>
+            <div id="statusPill" class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:ring-slate-700">
+              <span id="statusDot" class="inline-block h-2 w-2 rounded-full bg-slate-400"></span>
+              <span id="statusText">EMPTY</span>
+            </div>
+          </div>
+
+          <nav id="sideNav" class="flex flex-col gap-1 p-2">
+            <button class="nav-btn" type="button" data-section="overview">
+              <span class="nav-ico"><i class="fa-solid fa-house"></i></span>
+              <span class="flex-1 text-left">概览</span>
+            </button>
+            <button class="nav-btn" type="button" data-section="basic">
+              <span class="nav-ico"><i class="fa-solid fa-sliders"></i></span>
+              <span class="flex-1 text-left">基础配置</span>
+            </button>
+            <button class="nav-btn" type="button" data-section="proxy">
+              <span class="nav-ico"><i class="fa-solid fa-shuffle"></i></span>
+              <span class="flex-1 text-left">代理设置</span>
+            </button>
+            <button class="nav-btn" type="button" data-section="network">
+              <span class="nav-ico"><i class="fa-solid fa-shield-halved"></i></span>
+              <span class="flex-1 text-left">网络策略</span>
+            </button>
+            <button class="nav-btn" type="button" data-section="updates">
+              <span class="nav-ico"><i class="fa-solid fa-cloud-arrow-down"></i></span>
+              <span class="flex-1 text-left">更新检查</span>
+            </button>
+            <button class="nav-btn" type="button" data-section="routing">
+              <span class="nav-ico"><i class="fa-solid fa-route"></i></span>
+              <span class="flex-1 text-left">路由规则</span>
+            </button>
+            <button class="nav-btn" type="button" data-section="injection">
+              <span class="nav-ico"><i class="fa-solid fa-sitemap"></i></span>
+              <span class="flex-1 text-left">进程注入</span>
+            </button>
+          </nav>
+
+          <div class="border-t border-slate-200 px-4 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            <div class="flex items-center justify-between gap-3">
+              <div class="truncate">
+                <span class="font-semibold">已载入</span>：
+                <span id="loadedName" class="font-mono">（无）</span>
+              </div>
+              <button id="btnResetToEmpty" class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md px-2 py-1 text-slate-600 transition duration-200 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/60" type="button" title="清空并回到空白状态">
+                <i class="fa-solid fa-arrow-rotate-left"></i>
+              </button>
+            </div>
+            <div id="errorSummary" class="mt-2 hidden rounded-md bg-rose-500/10 px-2 py-2 text-rose-700 ring-1 ring-rose-500/20 dark:text-rose-200">
+              <div class="font-semibold">存在校验错误，无法导出</div>
+              <div id="errorSummaryText" class="mt-1 whitespace-pre-wrap"></div>
+            </div>
+            <div id="schemaDriftSummary" class="mt-2 hidden rounded-md bg-amber-500/10 px-2 py-2 text-amber-900 ring-1 ring-amber-500/20 dark:text-amber-200">
+              <div class="font-semibold">字段同步自检提示</div>
+              <div id="schemaDriftText" class="mt-1 whitespace-pre-wrap"></div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- 右侧表单区域 -->
+        <div class="min-w-0 space-y-6">
+          <!-- OVERVIEW -->
+          <section class="panel" data-panel="overview">
+            <div class="panel-hd">
+              <div>
+                <h2 class="panel-title">概览</h2>
+                <p class="panel-subtitle">导入 → 编辑 → 实时校验 → 导出</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button id="btnPresetDefault" class="btn btn-ghost" type="button">
+                  <i class="fa-solid fa-bolt"></i>
+                  <span>载入默认模板</span>
+                </button>
+                <button id="btnRefreshPreview" class="btn btn-ghost" type="button" title="刷新 JSON 预览">
+                  <i class="fa-solid fa-rotate"></i>
+                  <span>刷新预览</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="panel-bd">
+              <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <div class="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
+                  <div class="flex items-start gap-3">
+                    <div class="mt-1 text-teal-600 dark:text-teal-300"><i class="fa-solid fa-circle-info"></i></div>
+                    <div class="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                      <div class="font-semibold text-slate-900 dark:text-slate-100">开始使用</div>
+                      <ol class="list-decimal pl-5">
+                        <li>拖拽或点击「导入」选择你的 <span class="font-mono">config.json</span></li>
+                        <li>在左侧导航分组中编辑所有字段（支持数组增删与拖拽排序）</li>
+                        <li>右下角实时预览将展示最终导出 JSON</li>
+                      </ol>
+                      <div class="text-xs text-slate-500 dark:text-slate-400">
+                        安全说明：所有处理都在浏览器本地完成，不会上传到任何服务器。
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="text-sm font-semibold">当前状态</div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400">
+                      <span class="font-mono">_comment/_version/_build</span> 将随导出写入
+                    </div>
+                  </div>
+                  <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <div class="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-800">
+                      <div class="text-xs text-slate-500 dark:text-slate-400">错误</div>
+                      <div id="statErrors" class="mt-1 text-2xl font-bold text-rose-600 dark:text-rose-300">0</div>
+                    </div>
+                    <div class="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-800">
+                      <div class="text-xs text-slate-500 dark:text-slate-400">警告</div>
+                      <div id="statWarnings" class="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-300">0</div>
+                    </div>
+                    <div class="rounded-lg bg-slate-50 p-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-800">
+                      <div class="text-xs text-slate-500 dark:text-slate-400">路由规则</div>
+                      <div id="statRules" class="mt-1 text-2xl font-bold text-teal-700 dark:text-teal-300">0</div>
+                    </div>
+                  </div>
+                  <div class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                    提示：<span class="font-mono">proxy.port=0</span> 表示禁用代理（将直接直连）。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- BASIC -->
+          <section class="panel hidden" data-panel="basic">
+            <div class="panel-hd">
+              <div>
+                <h2 class="panel-title">基础配置</h2>
+                <p class="panel-subtitle">元信息 + 日志 + 流量日志</p>
+              </div>
+            </div>
+            <div class="panel-bd space-y-6">
+              <fieldset class="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40 md:grid-cols-2">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">元信息（导出时写入）</legend>
+
+                <div class="field">
+                  <label class="field-label" for="meta_comment">
+                    <span class="font-mono">_comment</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：为配置文件添加人类可读说明。取值：任意字符串。影响：不参与后端代理逻辑。建议：保留项目名与用途，便于排障定位。</span>
+                    </span>
+                  </label>
+                  <input id="meta_comment" class="field-input" type="text" data-bind="_comment" placeholder="Antigravity-Proxy 配置文件" />
+                  <div class="field-error" data-error-for="_comment"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="meta_version">
+                    <span class="font-mono">_version</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：标识配置版本。取值：语义化版本字符串（如 1.7.0）。影响：不影响运行逻辑，但影响排障追踪。建议：与 DLL 版本同步维护。</span>
+                    </span>
+                  </label>
+                  <input id="meta_version" class="field-input" type="text" data-bind="_version" placeholder="例如：1.7" />
+                  <div class="field-error" data-error-for="_version"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="meta_build_config">
+                    <span class="font-mono">_build.config</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：记录构建配置来源。取值：Release 或 Debug。影响：仅用于追踪来源，不改变代理行为。建议：保持与实际构建参数一致。</span>
+                    </span>
+                  </label>
+                  <select id="meta_build_config" class="field-input" data-bind="_build.config">
+                    <option value="Release">Release</option>
+                    <option value="Debug">Debug</option>
+                  </select>
+                  <div class="field-error" data-error-for="_build.config"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="meta_build_arch">
+                    <span class="font-mono">_build.arch</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：记录构建架构。取值：x64 或 x86。影响：仅用于追踪，不参与运行判断。建议：按产物位数准确填写。</span>
+                    </span>
+                  </label>
+                  <select id="meta_build_arch" class="field-input" data-bind="_build.arch">
+                    <option value="x64">x64</option>
+                    <option value="x86">x86</option>
+                  </select>
+                  <div class="field-error" data-error-for="_build.arch"></div>
+                </div>
+
+                <div class="field md:col-span-2">
+                  <label class="field-label">
+                    <span class="font-mono">_build.date</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：记录配置生成时间。取值：日期时间字符串。影响：不影响代理逻辑。建议：导出前刷新，便于回溯问题发生时间。</span>
+                    </span>
+                  </label>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <div id="meta_build_date" class="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 font-mono text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-200"></div>
+                    <button id="btnRefreshBuildDate" class="btn btn-ghost" type="button" title="刷新 build.date">
+                      <i class="fa-solid fa-rotate"></i>
+                      <span>刷新</span>
+                    </button>
+                  </div>
+                </div>
+              </fieldset>
+
+              <fieldset class="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40 md:grid-cols-2">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">日志与调试</legend>
+
+                <div class="field">
+                  <label class="field-label" for="log_level">
+                    <span class="font-mono">log_level</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：控制日志粒度。取值：debug/info/warn/error。影响：debug 日志最多且 I/O 开销更高。建议：默认 info，排障时临时切 debug。</span>
+                    </span>
+                  </label>
+                  <select id="log_level" class="field-input" data-bind="log_level">
+                    <option value="debug">debug</option>
+                    <option value="info">info</option>
+                    <option value="warn">warn</option>
+                    <option value="error">error</option>
+                  </select>
+                  <div class="field-error" data-error-for="log_level"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label">
+                    <span class="font-mono">traffic_logging</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：开启流量级日志。取值：布尔值。影响：可提升可观测性但会增加日志量。建议：仅在定位问题时开启。</span>
+                    </span>
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" data-bind="traffic_logging" />
+                    <span class="toggle-ui"></span>
+                    <span class="text-sm text-slate-700 dark:text-slate-200">启用</span>
+                  </label>
+                  <div class="field-error" data-error-for="traffic_logging"></div>
+                </div>
+              </fieldset>
+            </div>
+          </section>
+
+          <!-- PROXY -->
+          <section class="panel hidden" data-panel="proxy">
+            <div class="panel-hd">
+              <div>
+                <h2 class="panel-title">代理设置</h2>
+                <p class="panel-subtitle">proxy + timeout</p>
+              </div>
+            </div>
+            <div class="panel-bd space-y-6">
+              <fieldset class="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40 md:grid-cols-2">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">代理（proxy）</legend>
+
+                <div class="field">
+                  <label class="field-label" for="proxy_host">
+                    <span class="font-mono">proxy.host</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：指定上游代理主机。取值：IPv4/IPv6/域名字符串。影响：目标不可达会导致握手失败。建议：优先填本机回环地址并确认端口监听。</span>
+                    </span>
+                  </label>
+                  <input id="proxy_host" class="field-input" type="text" data-bind="proxy.host" placeholder="127.0.0.1" />
+                  <div class="field-error" data-error-for="proxy.host"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="proxy_port">
+                    <span class="font-mono">proxy.port</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：指定上游代理端口。取值：0-65535 整数。影响：0 表示禁用代理并走直连。建议：常规使用 7890/7891/10808 等实际监听端口。</span>
+                    </span>
+                  </label>
+                  <input id="proxy_port" class="field-input" type="number" min="0" max="65535" step="1" data-bind="proxy.port" />
+                  <div class="field-error" data-error-for="proxy.port"></div>
+                  <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">提示：设置为 <span class="font-mono">0</span> 将禁用代理（所有连接直连）。</div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="proxy_type">
+                    <span class="font-mono">proxy.type</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：选择代理握手协议。取值：socks5 或 http。影响：与上游代理协议不匹配会连接失败。建议：不确定时优先 socks5。</span>
+                    </span>
+                  </label>
+                  <select id="proxy_type" class="field-input" data-bind="proxy.type">
+                    <option value="socks5">socks5</option>
+                    <option value="http">http</option>
+                  </select>
+                  <div class="field-error" data-error-for="proxy.type"></div>
+                </div>
+
+                <!-- 快速填充 -->
+                <div class="field md:col-span-2">
+                  <label class="field-label">
+                    <span>快速填充</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：快速填充常见本地代理参数。取值：预设按钮。影响：会覆盖当前 proxy.host/proxy.port/proxy.type。建议：填充后先做连通性测试再导出。</span>
+                    </span>
+                  </label>
+                  <div class="flex flex-wrap gap-2">
+                    <button class="btn btn-ghost btn-sm" type="button" data-quick-proxy="clash">
+                      <i class="fa-solid fa-bolt"></i><span>Clash (7890)</span>
+                    </button>
+                    <button class="btn btn-ghost btn-sm" type="button" data-quick-proxy="v2rayn">
+                      <i class="fa-solid fa-bolt"></i><span>V2RayN (10808)</span>
+                    </button>
+                    <button class="btn btn-ghost btn-sm" type="button" data-quick-proxy="ss">
+                      <i class="fa-solid fa-bolt"></i><span>Shadowsocks (1080)</span>
+                    </button>
+                    <button class="btn btn-ghost btn-sm" type="button" data-quick-proxy="surge">
+                      <i class="fa-solid fa-bolt"></i><span>Surge (6153)</span>
+                    </button>
+                  </div>
+                </div>
+              </fieldset>
+
+              <!-- 代理连通性测试 -->
+              <fieldset class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">连通性测试</legend>
+
+                <div class="space-y-4">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button id="btnTestProxy" class="btn btn-ghost" type="button">
+                      <i class="fa-solid fa-plug"></i>
+                      <span>测试连通性</span>
+                    </button>
+                    <button id="btnTestBatchPorts" class="btn btn-ghost" type="button" title="批量测试常用端口">
+                      <i class="fa-solid fa-list-check"></i>
+                      <span>批量扫描端口</span>
+                    </button>
+                    <div id="proxyTestSpinner" class="hidden flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                      <div class="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-teal-600 dark:border-slate-700 dark:border-t-teal-400"></div>
+                      <span>测试中...</span>
+                    </div>
+                  </div>
+
+                  <!-- 测试结果 -->
+                  <div id="proxyTestResult" class="hidden rounded-lg p-3 text-sm"></div>
+
+                  <!-- 批量扫描结果 -->
+                  <div id="batchScanResult" class="hidden space-y-2">
+                    <div class="text-xs font-semibold text-slate-700 dark:text-slate-200">批量扫描结果</div>
+                    <div id="batchScanList" class="grid grid-cols-2 gap-2 md:grid-cols-4"></div>
+                  </div>
+
+                  <!-- 命令行测试提示（SOCKS5） -->
+                  <div id="socks5CmdHint" class="hidden rounded-lg border border-amber-500/20 bg-amber-500/10 p-3">
+                    <div class="flex items-start gap-2">
+                      <i class="fa-solid fa-triangle-exclamation mt-0.5 text-amber-600 dark:text-amber-300"></i>
+                      <div class="min-w-0 space-y-2">
+                        <div class="text-sm font-semibold text-amber-800 dark:text-amber-200">浏览器不支持 SOCKS5 测试</div>
+                        <div class="text-xs text-amber-700 dark:text-amber-300">请使用以下命令行方式验证：</div>
+                        <div class="space-y-1">
+                          <div class="text-xs font-semibold text-slate-700 dark:text-slate-200">PowerShell:</div>
+                          <pre id="socks5CmdPs" class="overflow-x-auto rounded-md bg-slate-900 px-3 py-2 font-mono text-xs text-slate-100"></pre>
+                        </div>
+                        <div class="space-y-1">
+                          <div class="text-xs font-semibold text-slate-700 dark:text-slate-200">curl (需安装):</div>
+                          <pre id="socks5CmdCurl" class="overflow-x-auto rounded-md bg-slate-900 px-3 py-2 font-mono text-xs text-slate-100"></pre>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 端口参考表 -->
+                  <details class="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/30">
+                    <summary class="cursor-pointer px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-900/40">
+                      <i class="fa-solid fa-table-list mr-2"></i>常用代理软件端口参考
+                    </summary>
+                    <div class="overflow-x-auto px-3 pb-3">
+                      <table class="w-full text-xs">
+                        <thead>
+                          <tr class="border-b border-slate-200 dark:border-slate-700">
+                            <th class="py-2 text-left font-semibold">代理软件</th>
+                            <th class="py-2 text-left font-semibold">SOCKS5</th>
+                            <th class="py-2 text-left font-semibold">HTTP</th>
+                            <th class="py-2 text-left font-semibold">说明</th>
+                          </tr>
+                        </thead>
+                        <tbody class="text-slate-600 dark:text-slate-300">
+                          <tr class="border-b border-slate-100 dark:border-slate-800">
+                            <td class="py-1.5">Clash / Clash Verge / Mihomo</td>
+                            <td class="py-1.5 font-mono">7891</td>
+                            <td class="py-1.5 font-mono">7890</td>
+                            <td class="py-1.5">混合端口 7890 同时支持两种协议</td>
+                          </tr>
+                          <tr class="border-b border-slate-100 dark:border-slate-800">
+                            <td class="py-1.5">V2RayN</td>
+                            <td class="py-1.5 font-mono">10808</td>
+                            <td class="py-1.5 font-mono">10809</td>
+                            <td class="py-1.5">设置 → Core 基础设置</td>
+                          </tr>
+                          <tr class="border-b border-slate-100 dark:border-slate-800">
+                            <td class="py-1.5">Shadowsocks</td>
+                            <td class="py-1.5 font-mono">1080</td>
+                            <td class="py-1.5 font-mono">—</td>
+                            <td class="py-1.5">仅 SOCKS5</td>
+                          </tr>
+                          <tr class="border-b border-slate-100 dark:border-slate-800">
+                            <td class="py-1.5">Surge (Mac/iOS)</td>
+                            <td class="py-1.5 font-mono">6153</td>
+                            <td class="py-1.5 font-mono">6152</td>
+                            <td class="py-1.5">—</td>
+                          </tr>
+                          <tr>
+                            <td class="py-1.5">Qv2ray</td>
+                            <td class="py-1.5 font-mono">1089</td>
+                            <td class="py-1.5 font-mono">8889</td>
+                            <td class="py-1.5">首选项 → 入站设置</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </details>
+
+                  <div class="text-xs text-slate-500 dark:text-slate-400">
+                    <i class="fa-solid fa-shield-halved mr-1"></i>
+                    所有测试在浏览器本地完成，不会上传任何数据。
+                  </div>
+                </div>
+              </fieldset>
+
+              <fieldset class="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40 md:grid-cols-3">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">超时（timeout，单位毫秒）</legend>
+
+                <div class="field">
+                  <label class="field-label" for="timeout_connect">
+                    <span class="font-mono">timeout.connect</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：控制建立连接超时。取值：正整数毫秒。影响：过小易误判超时，过大失败反馈慢。建议：保持 3000-8000ms。</span>
+                    </span>
+                  </label>
+                  <input id="timeout_connect" class="field-input" type="number" min="1" step="1" data-bind="timeout.connect" />
+                  <div class="field-error" data-error-for="timeout.connect"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="timeout_send">
+                    <span class="font-mono">timeout.send</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：控制发送阶段超时。取值：正整数毫秒。影响：直接影响握手与请求发送稳定性。建议：与 connect 接近，常用 5000ms。</span>
+                    </span>
+                  </label>
+                  <input id="timeout_send" class="field-input" type="number" min="1" step="1" data-bind="timeout.send" />
+                  <div class="field-error" data-error-for="timeout.send"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="timeout_recv">
+                    <span class="font-mono">timeout.recv</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：控制接收阶段超时。取值：正整数毫秒。影响：过小会导致响应读取失败。建议：弱网环境可适当调高。</span>
+                    </span>
+                  </label>
+                  <input id="timeout_recv" class="field-input" type="number" min="1" step="1" data-bind="timeout.recv" />
+                  <div class="field-error" data-error-for="timeout.recv"></div>
+                </div>
+              </fieldset>
+
+              <fieldset class="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40 md:grid-cols-2">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">FakeIP（fake_ip）</legend>
+
+                <div class="field">
+                  <label class="field-label">
+                    <span class="font-mono">fake_ip.enabled</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：启用 FakeIP 映射机制。取值：布尔值。影响：影响域名到虚拟地址映射与回查流程。建议：需要域名路由分流时保持开启。</span>
+                    </span>
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" data-bind="fake_ip.enabled" />
+                    <span class="toggle-ui"></span>
+                    <span class="text-sm text-slate-700 dark:text-slate-200">启用</span>
+                  </label>
+                  <div class="field-error" data-error-for="fake_ip.enabled"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="fakeip_cidr">
+                    <span class="font-mono">fake_ip.cidr</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：设置 FakeIP 地址池。取值：IPv4 CIDR。影响：与本地网段冲突会导致异常直连或回查失败。建议：使用 198.18.0.0/15 并避免与现网冲突。</span>
+                    </span>
+                  </label>
+                  <input id="fakeip_cidr" class="field-input" type="text" data-bind="fake_ip.cidr" placeholder="198.18.0.0/15" />
+                  <div class="field-error" data-error-for="fake_ip.cidr"></div>
+                </div>
+              </fieldset>
+            </div>
+          </section>
+
+          <!-- NETWORK -->
+          <section class="panel hidden" data-panel="network">
+            <div class="panel-hd">
+              <div>
+                <h2 class="panel-title">网络策略</h2>
+                <p class="panel-subtitle">proxy_rules：端口白名单 + DNS/IPv6/UDP 策略</p>
+              </div>
+            </div>
+
+            <div class="panel-bd space-y-6">
+              <fieldset class="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">端口白名单（proxy_rules.allowed_ports）</legend>
+
+                <div class="text-xs text-slate-500 dark:text-slate-400">
+                  说明：为空表示<strong>允许所有端口走代理</strong>；列表中端口必须在 1-65535，且不能为 0。
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <button id="btnAllowedPortsAdd" class="btn btn-ghost" type="button">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>添加端口</span>
+                  </button>
+                  <button id="btnAllowedPortsClear" class="btn btn-ghost" type="button" title="清空=代理所有端口">
+                    <i class="fa-solid fa-eraser"></i>
+                    <span>清空</span>
+                  </button>
+                </div>
+                <div id="allowedPortsList" class="mt-2 space-y-2"></div>
+              </fieldset>
+
+              <fieldset class="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40 md:grid-cols-3">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">策略枚举</legend>
+
+                <div class="field">
+                  <label class="field-label" for="dns_mode">
+                    <span class="font-mono">proxy_rules.dns_mode</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：定义 53 端口流量路由。取值：direct/proxy。影响：direct 延迟更低，proxy 更一致但可能更慢。建议：国内场景默认 direct。</span>
+                    </span>
+                  </label>
+                  <select id="dns_mode" class="field-input" data-bind="proxy_rules.dns_mode">
+                    <option value="direct">direct</option>
+                    <option value="proxy">proxy</option>
+                  </select>
+                  <div class="field-error" data-error-for="proxy_rules.dns_mode"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="ipv6_mode">
+                    <span class="font-mono">proxy_rules.ipv6_mode</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：定义 IPv6 流量处理方式。取值：proxy/direct/block。影响：direct 可能绕过代理，block 可避免泄漏。建议：代理覆盖不足时优先 block 或 proxy。</span>
+                    </span>
+                  </label>
+                  <select id="ipv6_mode" class="field-input" data-bind="proxy_rules.ipv6_mode">
+                    <option value="proxy">proxy</option>
+                    <option value="direct">direct</option>
+                    <option value="block">block</option>
+                  </select>
+                  <div class="field-error" data-error-for="proxy_rules.ipv6_mode"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="udp_mode">
+                    <span class="font-mono">proxy_rules.udp_mode</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：定义 UDP 流量行为。取值：block/direct/proxy。影响：direct 可能绕过代理；proxy 依赖上游支持 UDP Associate。建议：国内必须代理场景优先 block。</span>
+                    </span>
+                  </label>
+                  <select id="udp_mode" class="field-input" data-bind="proxy_rules.udp_mode">
+                    <option value="block">block</option>
+                    <option value="direct">direct</option>
+                    <option value="proxy">proxy</option>
+                  </select>
+                  <div class="field-error" data-error-for="proxy_rules.udp_mode"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="udp_fallback">
+                    <span class="font-mono">proxy_rules.udp_fallback</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：定义 UDP 代理失败后的处理。取值：block/direct（仅 udp_mode=proxy 生效）。影响：direct 提高可用性但有直连泄漏风险。建议：默认 block。</span>
+                    </span>
+                  </label>
+                  <select id="udp_fallback" class="field-input" data-bind="proxy_rules.udp_fallback">
+                    <option value="block">block</option>
+                    <option value="direct">direct</option>
+                  </select>
+                  <div class="field-error" data-error-for="proxy_rules.udp_fallback"></div>
+                </div>
+              </fieldset>
+            </div>
+          </section>
+
+          <!-- UPDATES -->
+          <section class="panel hidden" data-panel="updates">
+            <div class="panel-hd">
+              <div>
+                <h2 class="panel-title">更新检查</h2>
+                <p class="panel-subtitle">updates：GitHub Release 异步提醒</p>
+              </div>
+            </div>
+            <div class="panel-bd space-y-6">
+              <fieldset class="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40 md:grid-cols-2">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">后台检查</legend>
+
+                <div class="field">
+                  <label class="field-label">
+                    <span class="font-mono">updates.enabled</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：启用 GitHub Release 更新检查。取值：布尔值。影响：开启后 DLL 加载成功会延迟异步联网检查，仅提示打开 Release 页面，不自动下载。建议：需要更新提醒时再开启。</span>
+                    </span>
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" data-bind="updates.enabled" />
+                    <span class="toggle-ui"></span>
+                    <span class="text-sm text-slate-700 dark:text-slate-200">启用</span>
+                  </label>
+                  <div class="field-error" data-error-for="updates.enabled"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label">
+                    <span class="font-mono">updates.notify_once</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：同一新版本只提醒一次。取值：布尔值。影响：避免多个进程重复弹窗。建议：保持开启。</span>
+                    </span>
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" data-bind="updates.notify_once" />
+                    <span class="toggle-ui"></span>
+                    <span class="text-sm text-slate-700 dark:text-slate-200">启用</span>
+                  </label>
+                  <div class="field-error" data-error-for="updates.notify_once"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="updates_delay">
+                    <span class="font-mono">updates.check_delay_ms</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：DLL 加载成功后延迟多少毫秒再检查更新。取值：0 或正整数。影响：值越大越不影响启动主流程。建议：15000。</span>
+                    </span>
+                  </label>
+                  <input id="updates_delay" class="field-input" type="number" min="0" step="1000" data-bind="updates.check_delay_ms" />
+                  <div class="field-error" data-error-for="updates.check_delay_ms"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="updates_timeout">
+                    <span class="font-mono">updates.timeout_ms</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：单次 GitHub 或代理站请求超时。取值：正整数。影响：过大可能延长后台等待，过小可能误判失败。建议：5000。</span>
+                    </span>
+                  </label>
+                  <input id="updates_timeout" class="field-input" type="number" min="1" step="500" data-bind="updates.timeout_ms" />
+                  <div class="field-error" data-error-for="updates.timeout_ms"></div>
+                </div>
+
+                <div class="field md:col-span-2">
+                  <label class="field-label">
+                    <span class="font-mono">updates.allow_insecure_mirrors</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：仅对 GitHub 代理站忽略证书链/域名/日期错误。取值：布尔值。影响：提升代理站兼容性，但安全性更弱。建议：仅在依赖代理站时开启。</span>
+                    </span>
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" data-bind="updates.allow_insecure_mirrors" />
+                    <span class="toggle-ui"></span>
+                    <span class="text-sm text-slate-700 dark:text-slate-200">启用</span>
+                  </label>
+                  <div class="field-error" data-error-for="updates.allow_insecure_mirrors"></div>
+                </div>
+              </fieldset>
+
+              <fieldset class="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">GitHub 代理站（updates.mirrors）</legend>
+                <div class="text-xs text-slate-500 dark:text-slate-400">
+                  直连 GitHub Release API 失败后会按顺序轮询代理站，仅获取版本元数据；弹窗仍跳转 GitHub Release 页面。
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <button id="btnUpdateMirrorsAdd" class="btn btn-ghost" type="button">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>添加代理站</span>
+                  </button>
+                </div>
+                <div id="updateMirrorsList" class="mt-2 space-y-2"></div>
+              </fieldset>
+            </div>
+          </section>
+
+          <!-- ROUTING -->
+          <section class="panel hidden" data-panel="routing">
+            <div class="panel-hd">
+              <div>
+                <h2 class="panel-title">路由规则</h2>
+                <p class="panel-subtitle">proxy_rules.routing + RoutingRule（完整 CRUD）</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button id="btnAddRule" class="btn btn-ghost" type="button">
+                  <i class="fa-solid fa-plus"></i>
+                  <span>新增规则</span>
+                </button>
+                <button id="btnCloneRule" class="btn btn-ghost" type="button">
+                  <i class="fa-solid fa-clone"></i>
+                  <span>复制</span>
+                </button>
+                <button id="btnDeleteRule" class="btn btn-danger" type="button">
+                  <i class="fa-solid fa-trash"></i>
+                  <span>删除</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="panel-bd space-y-6">
+              <fieldset class="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40 md:grid-cols-2">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">routing 行为</legend>
+
+                <div class="field">
+                  <label class="field-label">
+                    <span class="font-mono">proxy_rules.routing.enabled</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：总开关，控制是否启用 routing.rules。取值：布尔值。影响：关闭后仅按基础策略运行，不再分规则匹配。建议：需要精细分流时开启。</span>
+                    </span>
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" data-bind="proxy_rules.routing.enabled" />
+                    <span class="toggle-ui"></span>
+                    <span class="text-sm text-slate-700 dark:text-slate-200">启用</span>
+                  </label>
+                  <div class="field-error" data-error-for="proxy_rules.routing.enabled"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="priority_mode">
+                    <span class="font-mono">proxy_rules.routing.priority_mode</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：定义规则优先级算法。取值：order/number。影响：改变命中规则的先后顺序。建议：规则较少用 order，复杂场景用 number。</span>
+                    </span>
+                  </label>
+                  <select id="priority_mode" class="field-input" data-bind="proxy_rules.routing.priority_mode">
+                    <option value="order">order</option>
+                    <option value="number">number</option>
+                  </select>
+                  <div class="field-error" data-error-for="proxy_rules.routing.priority_mode"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="default_action">
+                    <span class="font-mono">proxy_rules.routing.default_action</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：作为路由兜底动作。取值：proxy/direct。影响：直接决定未命中流量是代理还是直连。建议：国内必须代理场景用 proxy。</span>
+                    </span>
+                  </label>
+                  <select id="default_action" class="field-input" data-bind="proxy_rules.routing.default_action">
+                    <option value="proxy">proxy</option>
+                    <option value="direct">direct</option>
+                  </select>
+                  <div class="field-error" data-error-for="proxy_rules.routing.default_action"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label">
+                    <span class="font-mono">proxy_rules.routing.use_default_private</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：自动注入内网直连规则。取值：布尔值。影响：可避免把局域网地址错误发往代理。建议：一般保持开启。</span>
+                    </span>
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" data-bind="proxy_rules.routing.use_default_private" />
+                    <span class="toggle-ui"></span>
+                    <span class="text-sm text-slate-700 dark:text-slate-200">启用</span>
+                  </label>
+                  <div class="field-error" data-error-for="proxy_rules.routing.use_default_private"></div>
+                </div>
+              </fieldset>
+
+              <div class="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
+                <!-- Rule list -->
+                <aside class="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
+                  <div class="flex items-center justify-between border-b border-slate-200 p-3 dark:border-slate-800">
+                    <div class="text-sm font-semibold">规则列表</div>
+                    <div class="text-xs text-slate-500 dark:text-slate-400">支持拖拽排序</div>
+                  </div>
+                  <ul id="ruleList" class="max-h-[560px] overflow-auto p-2"></ul>
+                </aside>
+
+                <!-- Rule editor -->
+                <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <div class="text-sm font-semibold">规则编辑</div>
+                      <div class="text-xs text-slate-500 dark:text-slate-400">RoutingRule</div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <button id="btnMoveRuleUp" class="btn btn-ghost" type="button" title="上移">
+                        <i class="fa-solid fa-arrow-up"></i>
+                        <span>上移</span>
+                      </button>
+                      <button id="btnMoveRuleDown" class="btn btn-ghost" type="button" title="下移">
+                        <i class="fa-solid fa-arrow-down"></i>
+                        <span>下移</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div id="ruleEditorEmpty" class="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-300">
+                    暂无规则。点击「新增规则」开始。
+                  </div>
+
+                  <div id="ruleEditor" class="mt-4 hidden space-y-6">
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div class="field">
+                        <label class="field-label" for="rule_name">
+                          <span class="font-mono">name</span>
+                          <span class="tip">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <span class="tip-pop">作用：标识路由规则。取值：非空字符串。影响：仅影响可读性与日志定位。建议：按业务语义命名，避免重复。</span>
+                          </span>
+                        </label>
+                        <input id="rule_name" class="field-input" type="text" />
+                        <div class="field-error" data-error-for="__rule.name"></div>
+                      </div>
+
+                      <div class="field">
+                        <label class="field-label">
+                          <span class="font-mono">enabled</span>
+                          <span class="tip">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <span class="tip-pop">作用：单条规则开关。取值：布尔值。影响：关闭后规则被跳过。建议：调试规则冲突时可临时关闭。</span>
+                          </span>
+                        </label>
+                        <label class="toggle">
+                          <input id="rule_enabled" type="checkbox" />
+                          <span class="toggle-ui"></span>
+                          <span class="text-sm text-slate-700 dark:text-slate-200">启用</span>
+                        </label>
+                        <div class="field-error" data-error-for="__rule.enabled"></div>
+                      </div>
+
+                      <div class="field">
+                        <label class="field-label" for="rule_action">
+                          <span class="font-mono">action</span>
+                          <span class="tip">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <span class="tip-pop">作用：定义规则命中动作。取值：proxy/direct。影响：直接决定匹配流量去向。建议：对内网资源使用 direct，对外网使用 proxy。</span>
+                          </span>
+                        </label>
+                        <select id="rule_action" class="field-input">
+                          <option value="proxy">proxy</option>
+                          <option value="direct">direct</option>
+                        </select>
+                        <div class="field-error" data-error-for="__rule.action"></div>
+                      </div>
+
+                      <div class="field">
+                        <label class="field-label" for="rule_priority">
+                          <span class="font-mono">priority</span>
+                          <span class="tip">
+                            <i class="fa-solid fa-circle-info"></i>
+                            <span class="tip-pop">作用：控制 number 模式优先级。取值：整数。影响：优先级高的规则先匹配。建议：关键兜底规则使用更低优先级。</span>
+                          </span>
+                        </label>
+                        <input id="rule_priority" class="field-input" type="number" step="1" />
+                        <div class="field-error" data-error-for="__rule.priority"></div>
+                      </div>
+                    </div>
+
+                    <div id="ruleLevelMsg" class="hidden rounded-lg bg-amber-500/10 p-3 text-xs text-amber-900 ring-1 ring-amber-500/20 dark:text-amber-200">
+                      <!-- 由 JS 填充（例如：规则缺少匹配条件等） -->
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                      <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/30">
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                            <span class="font-mono">ip_cidrs_v4</span>
+                            <span class="tip">
+                              <i class="fa-solid fa-circle-info"></i>
+                              <span class="tip-pop">作用：设置 IPv4 网段匹配条件。取值：IPv4 CIDR 字符串数组。影响：命中后参与规则动作判定。建议：仅填必要网段并避免重叠冲突。</span>
+                            </span>
+                          </div>
+                          <button class="btn btn-ghost btn-sm" type="button" data-list-add="rule.ip_cidrs_v4">
+                            <i class="fa-solid fa-plus"></i><span>添加</span>
+                          </button>
+                        </div>
+                        <div id="rule_ip_cidrs_v4" class="mt-2 space-y-2"></div>
+                      </div>
+
+                      <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/30">
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                            <span class="font-mono">ip_cidrs_v6</span>
+                            <span class="tip">
+                              <i class="fa-solid fa-circle-info"></i>
+                              <span class="tip-pop">作用：设置 IPv6 网段匹配条件。取值：IPv6 CIDR 字符串数组。影响：命中后参与规则动作判定。建议：无 IPv6 需求可留空。</span>
+                            </span>
+                          </div>
+                          <button class="btn btn-ghost btn-sm" type="button" data-list-add="rule.ip_cidrs_v6">
+                            <i class="fa-solid fa-plus"></i><span>添加</span>
+                          </button>
+                        </div>
+                        <div id="rule_ip_cidrs_v6" class="mt-2 space-y-2"></div>
+                      </div>
+
+                      <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/30">
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                            <span class="font-mono">domains</span>
+                            <span class="tip">
+                              <i class="fa-solid fa-circle-info"></i>
+                              <span class="tip-pop">作用：设置域名匹配条件。取值：域名模式数组，支持 * ? 与 .example.com 语义。影响：直接影响域名分流准确性。建议：规则尽量精确，避免过宽匹配。</span>
+                            </span>
+                          </div>
+                          <button class="btn btn-ghost btn-sm" type="button" data-list-add="rule.domains">
+                            <i class="fa-solid fa-plus"></i><span>添加</span>
+                          </button>
+                        </div>
+                        <div id="rule_domains" class="mt-2 space-y-2"></div>
+                      </div>
+
+                      <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/30">
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                            <span class="font-mono">ports</span>
+                            <span class="tip">
+                              <i class="fa-solid fa-circle-info"></i>
+                              <span class="tip-pop">作用：设置端口匹配条件。取值：端口或端口段字符串数组。影响：可限制规则仅作用于指定业务端口。建议：默认仅填必需端口。</span>
+                            </span>
+                          </div>
+                          <button class="btn btn-ghost btn-sm" type="button" data-list-add="rule.ports">
+                            <i class="fa-solid fa-plus"></i><span>添加</span>
+                          </button>
+                        </div>
+                        <div id="rule_ports" class="mt-2 space-y-2"></div>
+                      </div>
+
+                      <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-950/30 xl:col-span-2">
+                        <div class="flex items-center justify-between gap-2">
+                          <div class="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                            <span class="font-mono">protocols</span>
+                            <span class="tip">
+                              <i class="fa-solid fa-circle-info"></i>
+                              <span class="tip-pop">作用：设置协议匹配条件。取值：字符串数组（当前建议 tcp）。影响：非 tcp 值通常难命中。建议：未明确需求时只填 tcp。</span>
+                            </span>
+                          </div>
+                          <div class="flex flex-wrap gap-2">
+                            <button class="btn btn-ghost btn-sm" type="button" id="btnProtoAddTcp">
+                              <i class="fa-solid fa-plus"></i><span>添加 tcp</span>
+                            </button>
+                            <button class="btn btn-ghost btn-sm" type="button" data-list-add="rule.protocols">
+                              <i class="fa-solid fa-plus"></i><span>自定义</span>
+                            </button>
+                          </div>
+                        </div>
+                        <div id="rule_protocols" class="mt-2 space-y-2"></div>
+                      </div>
+                    </div>
+
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/30 dark:text-slate-300">
+                      匹配语义提示：规则会先过滤 <span class="font-mono">protocols</span> 与 <span class="font-mono">ports</span>，再用（domains 或 CIDR v4/v6）任一命中即算命中；端口留空=全部端口。
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </section>
+
+          <!-- INJECTION -->
+          <section class="panel hidden" data-panel="injection">
+            <div class="panel-hd">
+              <div>
+                <h2 class="panel-title">进程注入</h2>
+                <p class="panel-subtitle">child_injection + 过滤/继承模式 + 排除列表</p>
+              </div>
+            </div>
+            <div class="panel-bd space-y-6">
+              <fieldset class="grid grid-cols-1 gap-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900/40 md:grid-cols-2">
+                <legend class="px-2 text-sm font-semibold text-slate-700 dark:text-slate-200">注入开关</legend>
+
+                <div class="field">
+                  <label class="field-label">
+                    <span class="font-mono">child_injection</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：控制是否对子进程执行注入。取值：布尔值。影响：关闭后子进程不会走 DLL 代理逻辑。建议：默认开启。</span>
+                    </span>
+                  </label>
+                  <label class="toggle">
+                    <input type="checkbox" data-bind="child_injection" />
+                    <span class="toggle-ui"></span>
+                    <span class="text-sm text-slate-700 dark:text-slate-200">启用</span>
+                  </label>
+                  <div class="field-error" data-error-for="child_injection"></div>
+                </div>
+
+                <div class="field">
+                  <label class="field-label" for="child_injection_mode">
+                    <span class="font-mono">child_injection_mode</span>
+                    <span class="tip">
+                      <i class="fa-solid fa-circle-info"></i>
+                      <span class="tip-pop">作用：定义子进程注入范围。取值：filtered/inherit。影响：决定匹配逻辑与注入覆盖面。建议：安全起见优先 filtered。</span>
+                    </span>
+                  </label>
+                  <select id="child_injection_mode" class="field-input" data-bind="child_injection_mode">
+                    <option value="filtered">filtered</option>
+                    <option value="inherit">inherit</option>
+                  </select>
+                  <div class="field-error" data-error-for="child_injection_mode"></div>
+                </div>
+              </fieldset>
+
+              <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="text-sm font-semibold">
+                      <span class="font-mono">target_processes</span>
+                      <span class="tip">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span class="tip-pop">作用：定义 filtered 模式目标名单。取值：字符串数组，大小写不敏感子串匹配。影响：仅命中的子进程会注入。建议：按可执行文件名关键字填写。</span>
+                      </span>
+                    </div>
+                    <button id="btnTargetProcessesAdd" class="btn btn-ghost" type="button">
+                      <i class="fa-solid fa-plus"></i>
+                      <span>添加</span>
+                    </button>
+                  </div>
+                  <div id="targetProcessesList" class="mt-3 space-y-2"></div>
+                </section>
+
+                <section class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="text-sm font-semibold">
+                      <span class="font-mono">child_injection_exclude</span>
+                      <span class="tip">
+                        <i class="fa-solid fa-circle-info"></i>
+                        <span class="tip-pop">作用：定义注入排除名单。取值：字符串数组，大小写不敏感子串匹配。影响：命中排除项的进程不会注入。建议：把已知不兼容进程放入此列表。</span>
+                      </span>
+                    </div>
+                    <button id="btnChildExcludeAdd" class="btn btn-ghost" type="button">
+                      <i class="fa-solid fa-plus"></i>
+                      <span>添加</span>
+                    </button>
+                  </div>
+                  <div id="childExcludeList" class="mt-3 space-y-2"></div>
+                </section>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- JSON 预览（内联，不遮挡内容） -->
+      <section id="previewPanel" class="mt-6 rounded-2xl border border-slate-200 bg-white/85 shadow-md shadow-slate-900/5 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/40 dark:shadow-black/20">
+        <div class="flex items-center justify-between gap-2 border-b border-slate-200 px-5 py-3 dark:border-slate-800">
+          <div class="flex items-center gap-2 text-sm font-semibold">
+            <i class="fa-solid fa-code text-slate-500 dark:text-slate-400"></i>
+            <span>JSON 预览</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btnCopyJson" class="btn btn-ghost btn-sm" type="button" title="复制到剪贴板">
+              <i class="fa-solid fa-copy"></i>
+              <span>复制</span>
+            </button>
+            <button id="btnTogglePreview" class="btn btn-ghost btn-sm" type="button" title="折叠/展开">
+              <i class="fa-solid fa-chevron-down"></i>
+              <span>折叠</span>
+            </button>
+          </div>
+        </div>
+        <div id="previewBody" class="max-h-[600px] overflow-auto px-5 py-4">
+          <pre id="jsonPreview" class="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed text-slate-800 dark:text-slate-100"></pre>
+        </div>
+      </section>
+    </main>
+
+    <!-- 空态 / 拖拽导入 -->
+    <div id="emptyOverlay" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4 backdrop-blur-sm">
+      <div class="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white p-6 shadow-md shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900/70 dark:shadow-black/30">
+        <div class="flex items-start gap-4">
+          <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-teal-500/10 ring-1 ring-slate-900/5 dark:bg-teal-400/10 dark:ring-white/10">
+            <i class="fa-solid fa-cloud-arrow-up text-xl text-teal-600 dark:text-teal-300"></i>
+          </div>
+          <div class="min-w-0">
+            <div class="text-lg font-semibold">拖拽或点击导入 <span class="font-mono">config.json</span></div>
+            <div class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              你也可以先载入默认模板，然后再按需修改。
+            </div>
+          </div>
+        </div>
+
+        <div id="dropZone" class="mt-5 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-950/30 dark:text-slate-300">
+          <div class="text-3xl text-slate-400 dark:text-slate-500"><i class="fa-solid fa-file-arrow-up"></i></div>
+          <div class="mt-2 font-semibold">把文件拖到这里</div>
+          <div class="mt-1 text-xs">或使用顶部「导入」按钮选择文件</div>
+        </div>
+
+        <div class="mt-5 flex flex-wrap items-center justify-end gap-2">
+          <button id="btnEmptyLoadDefault" class="btn btn-primary" type="button">
+            <i class="fa-solid fa-bolt"></i>
+            <span>载入默认模板</span>
+          </button>
+        </div>
+
+        <div id="parseErrorBox" class="mt-4 hidden rounded-lg bg-rose-500/10 px-3 py-2 text-sm text-rose-700 ring-1 ring-rose-500/20 dark:text-rose-200">
+          <div class="font-semibold">解析失败</div>
+          <div id="parseErrorText" class="mt-1 whitespace-pre-wrap"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+      <div class="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-md shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-black/30">
+        <div class="flex items-center gap-3">
+          <div class="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-teal-600 dark:border-slate-700 dark:border-t-teal-400"></div>
+          <div class="text-sm font-semibold">正在加载配置...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preset Modal -->
+    <div id="presetModal" class="hidden fixed inset-0 z-[70] bg-slate-950/40 p-4 backdrop-blur-sm">
+      <div class="mx-auto mt-12 w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-md shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900/80 dark:shadow-black/30">
+        <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+          <div class="text-sm font-semibold">模板预设</div>
+          <button id="btnClosePresets" class="inline-flex min-h-10 min-w-10 items-center justify-center rounded-md px-2 py-1 text-slate-600 transition duration-200 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800/60" type="button" title="关闭">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="p-5">
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <button class="preset-card" type="button" data-preset="default">
+              <div class="preset-title">默认配置</div>
+              <div class="preset-desc">log_level=info；allowed_ports=[80,443]；udp_mode=block；示例 target_processes</div>
+            </button>
+            <button class="preset-card" type="button" data-preset="global_proxy">
+              <div class="preset-title">全局代理</div>
+              <div class="preset-desc">allowed_ports=[]（全部端口）；dns_mode=proxy；其它保持默认</div>
+            </button>
+            <button class="preset-card" type="button" data-preset="https_only">
+              <div class="preset-title">仅代理 HTTPS</div>
+              <div class="preset-desc">allowed_ports=[443]；其它保持默认</div>
+            </button>
+            <button class="preset-card" type="button" data-preset="direct_all">
+              <div class="preset-title">禁用代理（直连）</div>
+              <div class="preset-desc">proxy.port=0（禁用代理）；其余保持默认</div>
+            </button>
+          </div>
+          <div class="mt-4 text-xs text-slate-500 dark:text-slate-400">
+            提示：选择模板会覆盖已知字段（并保留未知字段），建议先导出备份。
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Toasts -->
+    <div id="toastContainer" class="fixed right-4 top-4 z-[80] flex max-w-[calc(100vw-2rem)] flex-col gap-2"></div>
+
+    <script>
+      (() => {
+        // =========================
+        // Antigravity-Proxy Config Web (single-file)
+        // 约束：纯 HTML；Tailwind（CDN）；Font Awesome；零外部 JS 依赖
+        // =========================
+
+        // -------------------------
+        // Utils
+        // -------------------------
+        const $ = (id) => document.getElementById(id);
+        const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+        const deepClone = (obj) => {
+          try {
+            // 现代浏览器优先
+            return structuredClone(obj);
+          } catch (_) {
+            return JSON.parse(JSON.stringify(obj ?? {}));
+          }
+        };
+
+        const pad2 = (n) => String(n).padStart(2, "0");
+        const formatNow = () => {
+          const d = new Date();
+          return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+        };
+
+        const trim = (s) => (typeof s === "string" ? s.trim() : "");
+        const toLower = (s) => (typeof s === "string" ? s.toLowerCase() : "");
+
+        const getPath = (obj, path) => {
+          const parts = String(path || "").split(".").filter(Boolean);
+          let cur = obj;
+          for (const k of parts) {
+            if (!cur || typeof cur !== "object") return undefined;
+            cur = cur[k];
+          }
+          return cur;
+        };
+
+        const setPath = (obj, path, value) => {
+          const parts = String(path || "").split(".").filter(Boolean);
+          if (!parts.length) return;
+          let cur = obj;
+          for (let i = 0; i < parts.length - 1; i++) {
+            const k = parts[i];
+            if (!cur[k] || typeof cur[k] !== "object") cur[k] = {};
+            cur = cur[k];
+          }
+          cur[parts[parts.length - 1]] = value;
+        };
+
+        const normalizeBool = (v, fallback) => {
+          if (typeof v === "boolean") return v;
+          if (typeof v === "number") return v !== 0;
+          if (typeof v === "string") {
+            const s = v.trim().toLowerCase();
+            if (["1", "true", "yes", "y", "on"].includes(s)) return true;
+            if (["0", "false", "no", "n", "off"].includes(s)) return false;
+          }
+          return !!fallback;
+        };
+
+        const normalizeInt = (v, fallback) => {
+          if (typeof v === "number" && Number.isFinite(v)) return Math.trunc(v);
+          if (typeof v === "string") {
+            const s = v.trim();
+            if (!s) return fallback;
+            const n = Number(s);
+            if (Number.isFinite(n)) return Math.trunc(n);
+          }
+          return fallback;
+        };
+
+        const normalizeEnum = (v, allowed, fallback) => {
+          const s = toLower(trim(v));
+          return allowed.includes(s) ? s : fallback;
+        };
+
+        const normalizeStringArray = (v) => {
+          if (!Array.isArray(v)) return [];
+          return v
+            .map((x) => (typeof x === "string" ? x : String(x ?? "")))
+            .map((x) => x.trim())
+            .filter((x) => x.length > 0);
+        };
+
+        const normalizePortArray = (v) => {
+          if (!Array.isArray(v)) return [];
+          const out = [];
+          for (const x of v) {
+            const n = normalizeInt(x, NaN);
+            if (!Number.isFinite(n)) continue;
+            if (n <= 0 || n > 65535) continue;
+            out.push(n);
+          }
+          return out;
+        };
+
+        // -------------------------
+        // Validators (客户端实时校验；尽量对齐后端语义)
+        // -------------------------
+        const isValidIPv4 = (ip) => {
+          const s = trim(ip);
+          const parts = s.split(".");
+          if (parts.length !== 4) return false;
+          for (const p of parts) {
+            if (!p.length || p.length > 3) return false;
+            if (!/^[0-9]+$/.test(p)) return false;
+            const n = Number(p);
+            if (!Number.isInteger(n) || n < 0 || n > 255) return false;
+          }
+          return true;
+        };
+
+        // IPv6 校验：支持 :: 压缩、v4-embedded
+        const isValidIPv6 = (ip) => {
+          const s0 = trim(ip);
+          if (!s0) return false;
+          // 去掉 zone id（如 fe80::1%eth0）
+          const s = s0.split("%")[0];
+          if (!s) return false;
+          if (s.includes(":::")) return false;
+
+          const hasDc = s.includes("::");
+          if (hasDc && s.indexOf("::") !== s.lastIndexOf("::")) return false;
+
+          const splitSide = (side) => (side ? side.split(":") : []);
+          const [leftStr, rightStr] = hasDc ? s.split("::") : [s, ""];
+          const left = splitSide(leftStr);
+          const right = splitSide(rightStr);
+
+          const parseWord = (w) => /^[0-9a-fA-F]{1,4}$/.test(w);
+          const isV4Token = (t) => t.includes(".");
+          const countWords = (arr) => {
+            let c = 0;
+            for (let i = 0; i < arr.length; i++) {
+              const token = arr[i];
+              if (!token) return { ok: false, words: 0 };
+              if (isV4Token(token)) {
+                // v4 embedded 必须是最后一个 token
+                if (i !== arr.length - 1) return { ok: false, words: 0 };
+                if (!isValidIPv4(token)) return { ok: false, words: 0 };
+                c += 2;
+              } else {
+                if (!parseWord(token)) return { ok: false, words: 0 };
+                c += 1;
+              }
+            }
+            return { ok: true, words: c };
+          };
+
+          const cl = countWords(left);
+          if (!cl.ok) return false;
+          const cr = countWords(right);
+          if (!cr.ok) return false;
+
+          if (hasDc) {
+            // :: 至少压缩 1 段
+            if (cl.words + cr.words >= 8) return false;
+            return cl.words + cr.words < 8;
+          }
+          return cl.words === 8;
+        };
+
+        const parseCidr = (cidr, family) => {
+          const s = trim(cidr);
+          const idx = s.indexOf("/");
+          if (idx <= 0) return { ok: false, reason: "缺少 / 前缀长度" };
+          const ip = s.slice(0, idx).trim();
+          const bitsStr = s.slice(idx + 1).trim();
+          if (!bitsStr || !/^[0-9]+$/.test(bitsStr)) return { ok: false, reason: "前缀长度非法" };
+          const bits = Number(bitsStr);
+          if (!Number.isInteger(bits)) return { ok: false, reason: "前缀长度非法" };
+
+          if (family === 4) {
+            if (bits < 0 || bits > 32) return { ok: false, reason: "IPv4 前缀需 0-32" };
+            if (!isValidIPv4(ip)) return { ok: false, reason: "IPv4 地址非法" };
+            return { ok: true };
+          }
+          if (family === 6) {
+            if (bits < 0 || bits > 128) return { ok: false, reason: "IPv6 前缀需 0-128" };
+            if (!isValidIPv6(ip)) return { ok: false, reason: "IPv6 地址非法" };
+            return { ok: true };
+          }
+          return { ok: false, reason: "unknown family" };
+        };
+
+        const parsePortRange = (token) => {
+          const t = String(token ?? "").replace(/\s+/g, "");
+          if (!t) return { ok: false, reason: "为空" };
+          const dash = t.indexOf("-");
+          const parsePort = (s) => {
+            if (!/^[0-9]+$/.test(s)) return null;
+            const n = Number(s);
+            if (!Number.isInteger(n) || n < 1 || n > 65535) return null; // UI 端严格 1-65535
+            return n;
+          };
+          if (dash < 0) {
+            const p = parsePort(t);
+            return p == null ? { ok: false, reason: "端口需 1-65535" } : { ok: true, start: p, end: p };
+          }
+          const a = t.slice(0, dash);
+          const b = t.slice(dash + 1);
+          if (!a || !b) return { ok: false, reason: "范围格式非法" };
+          const pa = parsePort(a);
+          const pb = parsePort(b);
+          if (pa == null || pb == null) return { ok: false, reason: "端口需 1-65535" };
+          return { ok: true, start: Math.min(pa, pb), end: Math.max(pa, pb) };
+        };
+
+        // -------------------------
+        // UI helpers
+        // -------------------------
+        const ui = {
+          toast: (message, type = "info") => {
+            const container = $("toastContainer");
+            if (!container) return;
+            const base =
+              "rounded-lg border px-3 py-2 text-sm shadow-md shadow-slate-900/10 dark:shadow-black/30";
+            const styles = {
+              info: "border-slate-200 bg-white text-slate-800 dark:border-slate-800 dark:bg-slate-900/90 dark:text-slate-100",
+              success:
+                "border-emerald-500/30 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200",
+              warn: "border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200",
+              error: "border-rose-500/30 bg-rose-500/10 text-rose-800 dark:text-rose-200",
+            };
+            const el = document.createElement("div");
+            el.className = `${base} ${styles[type] || styles.info}`;
+            el.textContent = String(message ?? "");
+            container.appendChild(el);
+            setTimeout(() => {
+              try {
+                el.remove();
+              } catch (_) {}
+            }, 3200);
+          },
+          setLoading: (on) => {
+            $("loadingOverlay")?.classList.toggle("hidden", !on);
+          },
+          setEmptyOverlay: (on) => {
+            $("emptyOverlay")?.classList.toggle("hidden", !on);
+          },
+          setParseError: (message) => {
+            const box = $("parseErrorBox");
+            const text = $("parseErrorText");
+            if (!box || !text) return;
+            const msg = String(message ?? "").trim();
+            box.classList.toggle("hidden", !msg);
+            text.textContent = msg;
+          },
+        };
+
+        // -------------------------
+        // Defaults (对齐 build.ps1 结构)
+        // -------------------------
+        const DEFAULT_VERSION = "1.7"; // 来自 build.ps1 的 $Version（构建脚本会在 Release workflow 中同步）
+
+        const defaultForm = () => ({
+          _comment: "Antigravity-Proxy 配置文件",
+          _version: DEFAULT_VERSION,
+          _build: {
+            date: formatNow(),
+            config: "Release",
+            arch: "x64",
+          },
+          log_level: "info",
+          proxy: { host: "127.0.0.1", port: 7890, type: "socks5" },
+          fake_ip: { enabled: true, cidr: "198.18.0.0/15" },
+          timeout: { connect: 5000, send: 5000, recv: 5000 },
+          updates: {
+            enabled: false,
+            check_delay_ms: 15000,
+            timeout_ms: 5000,
+            notify_once: true,
+            allow_insecure_mirrors: true,
+            mirrors: [
+              "https://wget.la/",
+              "https://rapidgit.jjda.de5.net/",
+              "https://fastgit.cc/",
+              "https://gitproxy.mrhjx.cn/",
+              "https://github.boki.moe/",
+              "https://github.ednovas.xyz/",
+            ],
+          },
+          traffic_logging: false,
+          child_injection: true,
+          child_injection_mode: "filtered",
+          child_injection_exclude: [],
+          target_processes: ["agy.exe", "language_server.exe", "language_server_windows", "Antigravity.exe", "Antigravity IDE.exe", "node.exe"],
+          proxy_rules: {
+            allowed_ports: [80, 443],
+            dns_mode: "direct",
+            ipv6_mode: "proxy",
+            udp_mode: "block",
+            udp_fallback: "block",
+            routing: {
+              enabled: true,
+              priority_mode: "order",
+              default_action: "proxy",
+              use_default_private: true,
+              rules: [],
+            },
+          },
+        });
+
+        const defaultRoutingRule = (idx = 0) => ({
+          __ui_id: crypto?.randomUUID ? crypto.randomUUID() : `rule_${Date.now()}_${Math.random().toString(16).slice(2)}`,
+          name: `rule-${idx + 1}`,
+          enabled: true,
+          action: "proxy",
+          priority: 0,
+          ip_cidrs_v4: [],
+          ip_cidrs_v6: [],
+          domains: [],
+          ports: [],
+          protocols: ["tcp"],
+        });
+
+        // -------------------------
+        // Normalize import (对齐后端：统一小写 + 枚举回退)
+        // -------------------------
+        const normalizeLogLevel = (v) => {
+          const s = toLower(trim(v));
+          if (!s) return "info";
+          if (["debug", "d", "trace", "verbose", "调试"].includes(s)) return "debug";
+          if (["info", "i", "信息"].includes(s)) return "info";
+          if (["warn", "warning", "w", "警告"].includes(s)) return "warn";
+          if (["error", "err", "e", "错误"].includes(s)) return "error";
+          return "info";
+        };
+
+        const normalizeForm = (raw) => {
+          const base = defaultForm();
+          const j = raw && typeof raw === "object" ? raw : {};
+          const out = deepClone(base);
+
+          // meta
+          out._comment = typeof j._comment === "string" ? j._comment : base._comment;
+          out._version = typeof j._version === "string" ? j._version : base._version;
+          out._build = (j._build && typeof j._build === "object") ? { ...base._build, ...j._build } : base._build;
+          out._build.date = typeof out._build.date === "string" && trim(out._build.date) ? out._build.date : formatNow();
+          out._build.config = ["Release", "Debug"].includes(String(out._build.config)) ? String(out._build.config) : base._build.config;
+          out._build.arch = ["x64", "x86"].includes(String(out._build.arch)) ? String(out._build.arch) : base._build.arch;
+
+          // log_level
+          // 仅当导入 JSON 明确提供该字段时才覆盖默认值（默认模板需对齐 build.ps1）
+          if (Object.prototype.hasOwnProperty.call(j, "log_level")) {
+            out.log_level = normalizeLogLevel(j.log_level);
+          }
+
+          // proxy
+          const p = j.proxy && typeof j.proxy === "object" ? j.proxy : {};
+          out.proxy.host = trim(typeof p.host === "string" ? p.host : base.proxy.host) || base.proxy.host;
+          out.proxy.type = normalizeEnum(p.type, ["socks5", "http"], base.proxy.type);
+          {
+            const port = normalizeInt(p.port, base.proxy.port);
+            // 对齐后端：允许 0（禁用代理）；<0 或 >65535 回退 7890
+            out.proxy.port = port < 0 || port > 65535 ? base.proxy.port : port;
+          }
+
+          // fake_ip
+          const fip = j.fake_ip && typeof j.fake_ip === "object" ? j.fake_ip : {};
+          out.fake_ip.enabled = normalizeBool(fip.enabled, base.fake_ip.enabled);
+          out.fake_ip.cidr = trim(typeof fip.cidr === "string" ? fip.cidr : base.fake_ip.cidr) || base.fake_ip.cidr;
+
+          // timeout
+          const t = j.timeout && typeof j.timeout === "object" ? j.timeout : {};
+          out.timeout.connect = normalizeInt(t.connect, base.timeout.connect);
+          out.timeout.send = normalizeInt(t.send, base.timeout.send);
+          out.timeout.recv = normalizeInt(t.recv, base.timeout.recv);
+          if (out.timeout.connect <= 0) out.timeout.connect = base.timeout.connect;
+          if (out.timeout.send <= 0) out.timeout.send = base.timeout.send;
+          if (out.timeout.recv <= 0) out.timeout.recv = base.timeout.recv;
+
+          // updates
+          const upd = j.updates && typeof j.updates === "object" ? j.updates : {};
+          out.updates.enabled = normalizeBool(upd.enabled, base.updates.enabled);
+          out.updates.check_delay_ms = normalizeInt(upd.check_delay_ms, base.updates.check_delay_ms);
+          out.updates.timeout_ms = normalizeInt(upd.timeout_ms, base.updates.timeout_ms);
+          out.updates.notify_once = normalizeBool(upd.notify_once, base.updates.notify_once);
+          out.updates.allow_insecure_mirrors = normalizeBool(upd.allow_insecure_mirrors, base.updates.allow_insecure_mirrors);
+          out.updates.mirrors = Array.isArray(upd.mirrors)
+            ? normalizeStringArray(upd.mirrors)
+            : deepClone(base.updates.mirrors);
+          if (out.updates.check_delay_ms < 0) out.updates.check_delay_ms = base.updates.check_delay_ms;
+          if (out.updates.timeout_ms <= 0) out.updates.timeout_ms = base.updates.timeout_ms;
+
+          // phase2/3
+          out.traffic_logging = normalizeBool(j.traffic_logging, base.traffic_logging);
+          out.child_injection = normalizeBool(j.child_injection, base.child_injection);
+          out.child_injection_mode = normalizeEnum(j.child_injection_mode, ["filtered", "inherit"], base.child_injection_mode);
+          out.child_injection_exclude = Array.isArray(j.child_injection_exclude)
+            ? normalizeStringArray(j.child_injection_exclude)
+            : deepClone(base.child_injection_exclude);
+          out.target_processes = Array.isArray(j.target_processes)
+            ? normalizeStringArray(j.target_processes)
+            : deepClone(base.target_processes);
+
+          // proxy_rules
+          const pr = j.proxy_rules && typeof j.proxy_rules === "object" ? j.proxy_rules : {};
+          out.proxy_rules.allowed_ports = Array.isArray(pr.allowed_ports)
+            ? normalizePortArray(pr.allowed_ports)
+            : deepClone(base.proxy_rules.allowed_ports);
+          out.proxy_rules.dns_mode = normalizeEnum(pr.dns_mode, ["direct", "proxy"], base.proxy_rules.dns_mode);
+          out.proxy_rules.ipv6_mode = normalizeEnum(pr.ipv6_mode, ["proxy", "direct", "block"], base.proxy_rules.ipv6_mode);
+          out.proxy_rules.udp_mode = normalizeEnum(pr.udp_mode, ["block", "direct", "proxy"], base.proxy_rules.udp_mode);
+          out.proxy_rules.udp_fallback = normalizeEnum(pr.udp_fallback, ["block", "direct"], base.proxy_rules.udp_fallback);
+
+          const rt = pr.routing && typeof pr.routing === "object" ? pr.routing : {};
+          out.proxy_rules.routing.enabled = normalizeBool(rt.enabled, base.proxy_rules.routing.enabled);
+          out.proxy_rules.routing.priority_mode = normalizeEnum(rt.priority_mode, ["order", "number"], base.proxy_rules.routing.priority_mode);
+          out.proxy_rules.routing.default_action = normalizeEnum(rt.default_action, ["proxy", "direct"], base.proxy_rules.routing.default_action);
+          out.proxy_rules.routing.use_default_private = normalizeBool(rt.use_default_private, base.proxy_rules.routing.use_default_private);
+          const rulesIn = Array.isArray(rt.rules) ? rt.rules : base.proxy_rules.routing.rules;
+          out.proxy_rules.routing.rules = rulesIn.map((r, idx) => {
+            const rr = (r && typeof r === "object") ? r : {};
+            const rule = { ...defaultRoutingRule(idx), ...rr };
+            rule.name = trim(rule.name) || `rule-${idx + 1}`;
+            rule.enabled = normalizeBool(rule.enabled, true);
+            rule.action = normalizeEnum(rule.action, ["proxy", "direct"], out.proxy_rules.routing.default_action);
+            rule.priority = normalizeInt(rule.priority, 0);
+            rule.ip_cidrs_v4 = normalizeStringArray(rule.ip_cidrs_v4);
+            rule.ip_cidrs_v6 = normalizeStringArray(rule.ip_cidrs_v6);
+            rule.domains = normalizeStringArray(rule.domains);
+            rule.ports = normalizeStringArray(rule.ports);
+            rule.protocols = normalizeStringArray(rule.protocols);
+            return rule;
+          });
+
+          return out;
+        };
+
+        // -------------------------
+        // State
+        // -------------------------
+        const state = {
+          mode: "empty", // empty | ready
+          loading: false,
+          dirty: false,
+          loadedName: "（无）",
+          baseRaw: {},
+          form: defaultForm(),
+          ui: {
+            section: "overview",
+            previewOpen: true,
+          },
+          selectedRuleId: null,
+          errors: {},
+          warnings: {},
+          schemaIssues: [],
+        };
+
+        const KNOWN_TOP_FIELDS = [
+          "_comment",
+          "_version",
+          "_build",
+          "log_level",
+          "proxy",
+          "fake_ip",
+          "timeout",
+          "updates",
+          "traffic_logging",
+          "child_injection",
+          "child_injection_mode",
+          "child_injection_exclude",
+          "target_processes",
+          "proxy_rules",
+        ];
+
+        // -------------------------
+        // Schema drift self-check
+        // -------------------------
+        // 说明：
+        // - 无法在浏览器直接读取 Config.hpp，因此这里用“前端内置字段清单”做三方交叉检查
+        // - 检查范围：defaultForm / exportObject / UI 绑定与列表容器 / validateAll 关键标记
+        // - 若出现提示，说明前端内部实现存在字段漂移风险，应优先修复
+        const REQUIRED_CONFIG_PATHS = [
+          "_comment",
+          "_version",
+          "_build.date",
+          "_build.config",
+          "_build.arch",
+          "log_level",
+          "proxy.host",
+          "proxy.port",
+          "proxy.type",
+          "fake_ip.enabled",
+          "fake_ip.cidr",
+          "timeout.connect",
+          "timeout.send",
+          "timeout.recv",
+          "updates.enabled",
+          "updates.check_delay_ms",
+          "updates.timeout_ms",
+          "updates.notify_once",
+          "updates.allow_insecure_mirrors",
+          "updates.mirrors[]",
+          "traffic_logging",
+          "child_injection",
+          "child_injection_mode",
+          "child_injection_exclude[]",
+          "target_processes[]",
+          "proxy_rules.allowed_ports[]",
+          "proxy_rules.dns_mode",
+          "proxy_rules.ipv6_mode",
+          "proxy_rules.udp_mode",
+          "proxy_rules.udp_fallback",
+          "proxy_rules.routing.enabled",
+          "proxy_rules.routing.priority_mode",
+          "proxy_rules.routing.default_action",
+          "proxy_rules.routing.use_default_private",
+          "proxy_rules.routing.rules[].name",
+          "proxy_rules.routing.rules[].enabled",
+          "proxy_rules.routing.rules[].action",
+          "proxy_rules.routing.rules[].priority",
+          "proxy_rules.routing.rules[].ip_cidrs_v4[]",
+          "proxy_rules.routing.rules[].ip_cidrs_v6[]",
+          "proxy_rules.routing.rules[].domains[]",
+          "proxy_rules.routing.rules[].ports[]",
+          "proxy_rules.routing.rules[].protocols[]",
+        ];
+
+        const REQUIRED_DATA_BIND_PATHS = [
+          "_comment",
+          "_version",
+          "_build.config",
+          "_build.arch",
+          "log_level",
+          "proxy.host",
+          "proxy.port",
+          "proxy.type",
+          "fake_ip.enabled",
+          "fake_ip.cidr",
+          "timeout.connect",
+          "timeout.send",
+          "timeout.recv",
+          "updates.enabled",
+          "updates.check_delay_ms",
+          "updates.timeout_ms",
+          "updates.notify_once",
+          "updates.allow_insecure_mirrors",
+          "traffic_logging",
+          "child_injection",
+          "child_injection_mode",
+          "proxy_rules.dns_mode",
+          "proxy_rules.ipv6_mode",
+          "proxy_rules.udp_mode",
+          "proxy_rules.udp_fallback",
+          "proxy_rules.routing.enabled",
+          "proxy_rules.routing.priority_mode",
+          "proxy_rules.routing.default_action",
+          "proxy_rules.routing.use_default_private",
+        ];
+
+        const REQUIRED_LIST_CONTAINERS = {
+          "proxy_rules.allowed_ports[]": "allowedPortsList",
+          "target_processes[]": "targetProcessesList",
+          "child_injection_exclude[]": "childExcludeList",
+          "updates.mirrors[]": "updateMirrorsList",
+          "proxy_rules.routing.rules[].ip_cidrs_v4[]": "rule_ip_cidrs_v4",
+          "proxy_rules.routing.rules[].ip_cidrs_v6[]": "rule_ip_cidrs_v6",
+          "proxy_rules.routing.rules[].domains[]": "rule_domains",
+          "proxy_rules.routing.rules[].ports[]": "rule_ports",
+          "proxy_rules.routing.rules[].protocols[]": "rule_protocols",
+        };
+
+        const REQUIRED_RULE_EDITOR_IDS = ["rule_name", "rule_enabled", "rule_action", "rule_priority"];
+
+        const collectSchemaPaths = (obj, prefix = "", out = new Set()) => {
+          if (Array.isArray(obj)) {
+            if (!prefix) return out;
+            if (obj.length === 0) {
+              out.add(`${prefix}[]`);
+              return out;
+            }
+            const first = obj[0];
+            if (first && typeof first === "object" && !Array.isArray(first)) {
+              collectSchemaPaths(first, `${prefix}[]`, out);
+              return out;
+            }
+            out.add(`${prefix}[]`);
+            return out;
+          }
+          if (obj && typeof obj === "object") {
+            Object.keys(obj).forEach((k) => {
+              if (k === "__ui_id") return;
+              const next = prefix ? `${prefix}.${k}` : k;
+              collectSchemaPaths(obj[k], next, out);
+            });
+            return out;
+          }
+          if (prefix) out.add(prefix);
+          return out;
+        };
+
+        const runSchemaDriftCheck = () => {
+          const issues = [];
+
+          // 1) defaultForm 覆盖检查（给 rules 注入样本，避免空数组看不到子字段）
+          const sampleForm = defaultForm();
+          sampleForm.proxy_rules.routing.rules = [defaultRoutingRule(0)];
+          const formPaths = collectSchemaPaths(sampleForm);
+          REQUIRED_CONFIG_PATHS.forEach((p) => {
+            if (!formPaths.has(p)) issues.push(`defaultForm 缺少字段: ${p}`);
+          });
+
+          // 2) exportObject 覆盖检查
+          const savedForm = state.form;
+          const savedBaseRaw = state.baseRaw;
+          try {
+            state.form = deepClone(sampleForm);
+            state.baseRaw = {};
+            const exported = exportObject();
+            if (!Array.isArray(exported?.proxy_rules?.routing?.rules) || exported.proxy_rules.routing.rules.length === 0) {
+              exported.proxy_rules = exported.proxy_rules || {};
+              exported.proxy_rules.routing = exported.proxy_rules.routing || {};
+              exported.proxy_rules.routing.rules = [defaultRoutingRule(0)];
+            }
+            const exportedPaths = collectSchemaPaths(exported);
+            REQUIRED_CONFIG_PATHS.forEach((p) => {
+              if (!exportedPaths.has(p)) issues.push(`exportObject 缺少字段: ${p}`);
+            });
+          } catch (e) {
+            issues.push(`exportObject 检查异常: ${e?.message || String(e)}`);
+          } finally {
+            state.form = savedForm;
+            state.baseRaw = savedBaseRaw;
+          }
+
+          // 3) UI scalar 绑定检查
+          const bindPaths = new Set(
+            $$("[data-bind]")
+              .map((el) => String(el.getAttribute("data-bind") || "").trim())
+              .filter(Boolean)
+          );
+          REQUIRED_DATA_BIND_PATHS.forEach((p) => {
+            if (!bindPaths.has(p)) issues.push(`UI 缺少 data-bind: ${p}`);
+          });
+
+          // 4) 列表容器与规则编辑器检查
+          Object.entries(REQUIRED_LIST_CONTAINERS).forEach(([path, id]) => {
+            if (!$(id)) issues.push(`UI 缺少列表容器: ${path} -> #${id}`);
+          });
+          REQUIRED_RULE_EDITOR_IDS.forEach((id) => {
+            if (!$(id)) issues.push(`UI 缺少规则编辑控件: #${id}`);
+          });
+
+          // 5) validateAll 关键字段标记检查
+          const validateSrc = String(validateAll);
+          const requiredMarkers = [
+            "_build.config",
+            "_build.arch",
+            "log_level",
+            "proxy.host",
+            "proxy.port",
+            "proxy.type",
+            "fake_ip.enabled",
+            "fake_ip.cidr",
+            "timeout.",
+            "updates.enabled",
+            "updates.check_delay_ms",
+            "updates.timeout_ms",
+            "updates.notify_once",
+            "updates.allow_insecure_mirrors",
+            "updates.mirrors",
+            "traffic_logging",
+            "child_injection",
+            "child_injection_mode",
+            "child_injection_exclude",
+            "target_processes",
+            "proxy_rules.allowed_ports",
+            "proxy_rules.dns_mode",
+            "proxy_rules.ipv6_mode",
+            "proxy_rules.udp_mode",
+            "proxy_rules.udp_fallback",
+            "proxy_rules.routing.enabled",
+            "proxy_rules.routing.priority_mode",
+            "proxy_rules.routing.default_action",
+            "proxy_rules.routing.use_default_private",
+            "${prefix}.name",
+            "${prefix}.enabled",
+            "${prefix}.action",
+            "${prefix}.priority",
+            "${prefix}.ip_cidrs_v4",
+            "${prefix}.ip_cidrs_v6",
+            "${prefix}.domains",
+            "${prefix}.ports",
+            "${prefix}.protocols",
+          ];
+          requiredMarkers.forEach((m) => {
+            if (!validateSrc.includes(m)) issues.push(`validateAll 可能缺少字段校验: ${m}`);
+          });
+
+          state.schemaIssues = issues;
+        };
+
+        // -------------------------
+        // Export builder (保留未知字段：对象级覆盖已知字段)
+        // -------------------------
+        const ensureObjIn = (obj, key) => {
+          if (!obj || typeof obj !== "object") return {};
+          if (!obj[key] || typeof obj[key] !== "object" || Array.isArray(obj[key])) obj[key] = {};
+          return obj[key];
+        };
+
+        const exportObject = () => {
+          const out = deepClone(state.baseRaw || {});
+
+          // top-level meta
+          out._comment = String(state.form._comment ?? "Antigravity-Proxy 配置文件");
+          out._version = String(state.form._version ?? DEFAULT_VERSION);
+          const outBuild = ensureObjIn(out, "_build");
+          outBuild.date = String(state.form?._build?.date ?? formatNow());
+          outBuild.config = String(state.form?._build?.config ?? "Release");
+          outBuild.arch = String(state.form?._build?.arch ?? "x64");
+
+          // scalar
+          out.log_level = state.form.log_level;
+          out.traffic_logging = !!state.form.traffic_logging;
+          out.child_injection = !!state.form.child_injection;
+          out.child_injection_mode = state.form.child_injection_mode;
+          out.child_injection_exclude = deepClone(state.form.child_injection_exclude);
+          out.target_processes = deepClone(state.form.target_processes);
+
+          // proxy
+          const outProxy = ensureObjIn(out, "proxy");
+          outProxy.host = state.form.proxy.host;
+          outProxy.port = state.form.proxy.port;
+          outProxy.type = state.form.proxy.type;
+
+          // fake_ip
+          const outFakeIp = ensureObjIn(out, "fake_ip");
+          outFakeIp.enabled = !!state.form.fake_ip.enabled;
+          outFakeIp.cidr = state.form.fake_ip.cidr;
+
+          // timeout
+          const outTimeout = ensureObjIn(out, "timeout");
+          outTimeout.connect = state.form.timeout.connect;
+          outTimeout.send = state.form.timeout.send;
+          outTimeout.recv = state.form.timeout.recv;
+
+          // updates
+          const outUpdates = ensureObjIn(out, "updates");
+          outUpdates.enabled = !!state.form.updates.enabled;
+          outUpdates.check_delay_ms = state.form.updates.check_delay_ms;
+          outUpdates.timeout_ms = state.form.updates.timeout_ms;
+          outUpdates.notify_once = !!state.form.updates.notify_once;
+          outUpdates.allow_insecure_mirrors = !!state.form.updates.allow_insecure_mirrors;
+          outUpdates.mirrors = deepClone(state.form.updates.mirrors);
+
+          // proxy_rules
+          const outPr = ensureObjIn(out, "proxy_rules");
+          outPr.allowed_ports = deepClone(state.form.proxy_rules.allowed_ports);
+          outPr.dns_mode = state.form.proxy_rules.dns_mode;
+          outPr.ipv6_mode = state.form.proxy_rules.ipv6_mode;
+          outPr.udp_mode = state.form.proxy_rules.udp_mode;
+          outPr.udp_fallback = state.form.proxy_rules.udp_fallback;
+
+          const outRt = ensureObjIn(outPr, "routing");
+          outRt.enabled = !!state.form.proxy_rules.routing.enabled;
+          outRt.priority_mode = state.form.proxy_rules.routing.priority_mode;
+          outRt.default_action = state.form.proxy_rules.routing.default_action;
+          outRt.use_default_private = !!state.form.proxy_rules.routing.use_default_private;
+          outRt.rules = (state.form.proxy_rules.routing.rules || []).map((r) => {
+            const rr = deepClone(r || {});
+            delete rr.__ui_id;
+            return rr;
+          });
+
+          return out;
+        };
+
+        // -------------------------
+        // Validation
+        // -------------------------
+        const validateAll = () => {
+          const errors = {};
+          const warnings = {};
+
+          const err = (path, msg) => {
+            errors[path] = msg;
+          };
+          const warn = (path, msg) => {
+            warnings[path] = msg;
+          };
+
+          // meta
+          if (!trim(state.form._comment)) warn("_comment", "_comment 为空（不影响功能，但建议保留说明）");
+          if (!trim(state.form._version)) warn("_version", "_version 为空（建议填写版本号，便于追踪）");
+          if (!trim(state.form?._build?.date)) warn("_build.date", "_build.date 为空（建议刷新）");
+          if (!["Release", "Debug"].includes(String(state.form?._build?.config || ""))) {
+            err("_build.config", "_build.config 必须为 Release/Debug");
+          }
+          if (!["x64", "x86"].includes(String(state.form?._build?.arch || ""))) {
+            err("_build.arch", "_build.arch 必须为 x64/x86");
+          }
+
+          // log_level
+          if (!["debug", "info", "warn", "error"].includes(state.form.log_level)) {
+            err("log_level", "log_level 必须为 debug/info/warn/error");
+          }
+
+          // proxy
+          if (!trim(state.form.proxy.host)) err("proxy.host", "proxy.host 不能为空");
+          const pp = state.form.proxy.port;
+          if (!Number.isInteger(pp) || pp < 0 || pp > 65535) err("proxy.port", "proxy.port 必须为 0-65535 的整数");
+          if (Number.isInteger(pp) && pp === 0) warn("proxy.port", "proxy.port=0 将禁用代理（全部直连）");
+          if (!["socks5", "http"].includes(state.form.proxy.type)) err("proxy.type", "proxy.type 必须为 socks5/http");
+
+          // fake ip
+          if (typeof state.form.fake_ip.enabled !== "boolean") err("fake_ip.enabled", "必须为布尔值");
+          const cidr = trim(state.form.fake_ip.cidr);
+          if (!cidr) err("fake_ip.cidr", "fake_ip.cidr 不能为空");
+          else {
+            const rc = parseCidr(cidr, 4);
+            if (!rc.ok) err("fake_ip.cidr", `CIDR 格式错误：${rc.reason}`);
+          }
+
+          // timeout
+          for (const k of ["connect", "send", "recv"]) {
+            const v = state.form.timeout[k];
+            if (!Number.isInteger(v) || v <= 0) err(`timeout.${k}`, "必须为正整数（毫秒）");
+          }
+
+          // updates
+          if (typeof state.form.updates.enabled !== "boolean") err("updates.enabled", "必须为布尔值");
+          if (typeof state.form.updates.notify_once !== "boolean") err("updates.notify_once", "必须为布尔值");
+          if (typeof state.form.updates.allow_insecure_mirrors !== "boolean") err("updates.allow_insecure_mirrors", "必须为布尔值");
+          if (!Number.isInteger(state.form.updates.check_delay_ms) || state.form.updates.check_delay_ms < 0) {
+            err("updates.check_delay_ms", "必须为 0 或正整数（毫秒）");
+          }
+          if (!Number.isInteger(state.form.updates.timeout_ms) || state.form.updates.timeout_ms <= 0) {
+            err("updates.timeout_ms", "必须为正整数（毫秒）");
+          }
+          (state.form.updates.mirrors || []).forEach((s, i) => {
+            const v = trim(s);
+            if (!v) err(`updates.mirrors[${i}]`, "代理站不能为空");
+            if (v && !/^https:\/\//i.test(v)) err(`updates.mirrors[${i}]`, "代理站必须使用 https://");
+          });
+
+          // phase2/3 scalar
+          if (typeof state.form.traffic_logging !== "boolean") err("traffic_logging", "必须为布尔值");
+          if (typeof state.form.child_injection !== "boolean") err("child_injection", "必须为布尔值");
+
+          // child injection mode
+          if (!["filtered", "inherit"].includes(state.form.child_injection_mode)) {
+            err("child_injection_mode", "必须为 filtered/inherit");
+          }
+
+          // arrays (top-level)
+          state.form.child_injection_exclude.forEach((s, i) => {
+            if (!trim(s)) err(`child_injection_exclude[${i}]`, "不能为空");
+          });
+          state.form.target_processes.forEach((s, i) => {
+            if (!trim(s)) err(`target_processes[${i}]`, "不能为空");
+          });
+
+          // proxy_rules.allowed_ports
+          const seenPorts = new Set();
+          state.form.proxy_rules.allowed_ports.forEach((p, i) => {
+            if (!Number.isInteger(p) || p < 1 || p > 65535) err(`proxy_rules.allowed_ports[${i}]`, "端口必须 1-65535");
+            if (p === 0) err(`proxy_rules.allowed_ports[${i}]`, "端口不能为 0");
+            const key = String(p);
+            if (seenPorts.has(key)) warn(`proxy_rules.allowed_ports[${i}]`, "重复端口（后端会排序去重）");
+            seenPorts.add(key);
+          });
+
+          // enums
+          if (!["direct", "proxy"].includes(state.form.proxy_rules.dns_mode)) err("proxy_rules.dns_mode", "必须为 direct/proxy");
+          if (!["proxy", "direct", "block"].includes(state.form.proxy_rules.ipv6_mode)) err("proxy_rules.ipv6_mode", "必须为 proxy/direct/block");
+          if (!["block", "direct", "proxy"].includes(state.form.proxy_rules.udp_mode)) err("proxy_rules.udp_mode", "必须为 block/direct/proxy");
+          if (!["block", "direct"].includes(state.form.proxy_rules.udp_fallback)) err("proxy_rules.udp_fallback", "必须为 block/direct");
+          if (state.form.proxy_rules.udp_mode !== "proxy" && state.form.proxy_rules.udp_fallback !== "block") {
+            warn("proxy_rules.udp_fallback", "仅 udp_mode=proxy 时生效；当前该设置不会生效");
+          }
+
+          // routing bools
+          if (typeof state.form.proxy_rules.routing.enabled !== "boolean") err("proxy_rules.routing.enabled", "必须为布尔值");
+          if (typeof state.form.proxy_rules.routing.use_default_private !== "boolean") err("proxy_rules.routing.use_default_private", "必须为布尔值");
+
+          // routing enums
+          if (!["order", "number"].includes(state.form.proxy_rules.routing.priority_mode)) err("proxy_rules.routing.priority_mode", "必须为 order/number");
+          if (!["proxy", "direct"].includes(state.form.proxy_rules.routing.default_action)) err("proxy_rules.routing.default_action", "必须为 proxy/direct");
+
+          // routing rules
+          const rules = state.form.proxy_rules.routing.rules || [];
+          rules.forEach((r, idx) => {
+            const prefix = `proxy_rules.routing.rules[${idx}]`;
+            if (!trim(r.name)) err(`${prefix}.name`, "name 不能为空");
+            if (typeof r.enabled !== "boolean") err(`${prefix}.enabled`, "enabled 必须为布尔值");
+            if (!["proxy", "direct"].includes(toLower(r.action))) err(`${prefix}.action`, "action 必须为 proxy/direct");
+            if (!Number.isInteger(r.priority)) warn(`${prefix}.priority`, "priority 建议为整数");
+
+            // matchable conditions
+            if (!r.domains?.length && !r.ip_cidrs_v4?.length && !r.ip_cidrs_v6?.length) {
+              warn(prefix, "该规则没有 domains/CIDR 条件，可能永远无法命中");
+            }
+
+            (r.ip_cidrs_v4 || []).forEach((c, i) => {
+              const rc = parseCidr(c, 4);
+              if (!rc.ok) err(`${prefix}.ip_cidrs_v4[${i}]`, `IPv4 CIDR 无效：${rc.reason}`);
+            });
+            (r.ip_cidrs_v6 || []).forEach((c, i) => {
+              const rc = parseCidr(c, 6);
+              if (!rc.ok) err(`${prefix}.ip_cidrs_v6[${i}]`, `IPv6 CIDR 无效：${rc.reason}`);
+            });
+            (r.domains || []).forEach((d, i) => {
+              if (!trim(d)) err(`${prefix}.domains[${i}]`, "域名不能为空");
+            });
+            (r.ports || []).forEach((p, i) => {
+              const rc = parsePortRange(p);
+              if (!rc.ok) err(`${prefix}.ports[${i}]`, `端口范围无效：${rc.reason}`);
+            });
+            (r.protocols || []).forEach((p, i) => {
+              const s = toLower(trim(p));
+              if (!s) err(`${prefix}.protocols[${i}]`, "协议不能为空");
+              else if (s !== "tcp") warn(`${prefix}.protocols[${i}]`, "当前主要支持 tcp；其它值可能无法命中");
+            });
+          });
+
+          state.errors = errors;
+          state.warnings = warnings;
+        };
+
+        const hasErrors = () => Object.keys(state.errors).length > 0;
+
+        // -------------------------
+        // Rendering
+        // -------------------------
+        const markDirty = () => {
+          if (state.dirty) return;
+          state.dirty = true;
+          $("dirtyBadge")?.classList.remove("hidden");
+        };
+
+        const renderStatus = () => {
+          const dot = $("statusDot");
+          const text = $("statusText");
+          const pill = $("statusPill");
+          if (!dot || !text || !pill) return;
+
+          const e = Object.keys(state.errors).length;
+          if (state.mode !== "ready") {
+            text.textContent = "EMPTY";
+            dot.className = "inline-block h-2 w-2 rounded-full bg-slate-400";
+            return;
+          }
+          if (e > 0) {
+            text.textContent = "ERROR";
+            dot.className = "inline-block h-2 w-2 rounded-full bg-rose-500";
+            return;
+          }
+          text.textContent = "READY";
+          dot.className = "inline-block h-2 w-2 rounded-full bg-emerald-500";
+        };
+
+        const renderStats = () => {
+          $("statErrors").textContent = String(Object.keys(state.errors).length);
+          $("statWarnings").textContent = String(Object.keys(state.warnings).length);
+          $("statRules").textContent = String(state.form.proxy_rules.routing.rules.length);
+        };
+
+        const renderErrorSummary = () => {
+          const box = $("errorSummary");
+          const text = $("errorSummaryText");
+          if (!box || !text) return;
+          const keys = Object.keys(state.errors);
+          box.classList.toggle("hidden", keys.length === 0 || state.mode !== "ready");
+          if (keys.length === 0) {
+            text.textContent = "";
+            return;
+          }
+          const preview = keys.slice(0, 6).map((k) => `- ${k}: ${state.errors[k]}`).join("\n");
+          text.textContent = keys.length > 6 ? `${preview}\n...（共 ${keys.length} 项）` : preview;
+        };
+
+        const renderSchemaDriftSummary = () => {
+          const box = $("schemaDriftSummary");
+          const text = $("schemaDriftText");
+          if (!box || !text) return;
+          const issues = state.schemaIssues || [];
+          box.classList.toggle("hidden", issues.length === 0);
+          if (issues.length === 0) {
+            text.textContent = "";
+            return;
+          }
+          const preview = issues.slice(0, 6).map((x) => `- ${x}`).join("\n");
+          text.textContent = issues.length > 6 ? `${preview}\n...（共 ${issues.length} 项）` : preview;
+        };
+
+        const renderMetaDate = () => {
+          const el = $("meta_build_date");
+          if (el) el.textContent = String(state.form?._build?.date ?? "");
+        };
+
+        const renderJsonPreview = () => {
+          const pre = $("jsonPreview");
+          if (!pre) return;
+          try {
+            const out = exportObject();
+            pre.textContent = JSON.stringify(out, null, 2);
+          } catch (e) {
+            pre.textContent = `预览生成失败：${e?.message || String(e)}`;
+          }
+        };
+
+        const renderPanels = () => {
+          $$("[data-panel]").forEach((p) => {
+            const sec = p.getAttribute("data-panel");
+            p.classList.toggle("hidden", sec !== state.ui.section);
+          });
+        };
+
+        const renderNav = () => {
+          const buttons = $$("button.nav-btn", $("sideNav"));
+          buttons.forEach((btn) => {
+            const active = btn.dataset.section === state.ui.section;
+            btn.classList.toggle("nav-btn--active", active);
+            // 直接用 Tailwind 类控制选中态（避免额外脚本轮询）
+            btn.classList.toggle("bg-teal-500/10", active);
+            btn.classList.toggle("ring-1", active);
+            btn.classList.toggle("ring-teal-500/30", active);
+            btn.classList.toggle("dark:bg-teal-400/10", active);
+            btn.classList.toggle("text-teal-800", active);
+            btn.classList.toggle("dark:text-teal-100", active);
+            btn.classList.toggle("shadow-sm", active);
+            btn.classList.toggle("shadow-teal-700/20", active);
+            const ico = btn.querySelector(".nav-ico");
+            if (ico) {
+              ico.classList.toggle("bg-teal-500/15", active);
+              ico.classList.toggle("text-teal-700", active);
+              ico.classList.toggle("ring-teal-500/40", active);
+              ico.classList.toggle("dark:bg-teal-400/15", active);
+              ico.classList.toggle("dark:text-teal-200", active);
+            }
+          });
+        };
+
+        const setFormToInputs = () => {
+          $$("[data-bind]").forEach((el) => {
+            const path = el.dataset.bind;
+            const v = getPath(state.form, path);
+            if (el.type === "checkbox") {
+              el.checked = !!v;
+            } else if (el.tagName === "SELECT") {
+              el.value = String(v ?? "");
+            } else if (el.type === "number") {
+              el.value = Number.isFinite(v) ? String(v) : "";
+            } else {
+              el.value = String(v ?? "");
+            }
+          });
+          renderMetaDate();
+        };
+
+        const renderFieldErrors = () => {
+          // scalar errors
+          $$("[data-error-for]").forEach((el) => {
+            const path = el.dataset.errorFor;
+            const msg = state.errors[path] || "";
+            const isRuleLocal = path && path.startsWith("__rule.");
+            if (isRuleLocal) return; // 规则编辑器用单独渲染
+            el.textContent = msg;
+            el.classList.toggle("hidden", !msg);
+          });
+
+          // enable export if no errors & ready
+          const exportBtn = $("btnExport");
+          if (exportBtn) exportBtn.disabled = state.mode !== "ready" || hasErrors();
+        };
+
+        // -------------------------
+        // List editors (增删改 + 拖拽排序)
+        // -------------------------
+        let renderSimpleList = (container, path, itemType) => {
+          const list = getPath(state.form, path);
+          if (!container) return;
+          container.innerHTML = "";
+          if (!Array.isArray(list)) return;
+
+          const makeItemRow = (idx) => {
+            const row = document.createElement("div");
+            row.className = "flex items-start gap-2";
+            row.draggable = true;
+            row.dataset.index = String(idx);
+
+            const handle = document.createElement("button");
+            handle.type = "button";
+            handle.className = "mt-1.5 inline-flex min-h-10 min-w-10 items-center justify-center rounded-md px-2 py-1 text-slate-500 transition duration-200 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/60";
+            handle.title = "拖拽排序";
+            handle.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
+            row.appendChild(handle);
+
+            const input = document.createElement("input");
+            input.className =
+              "w-full min-h-[44px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-teal-500/30 focus:ring-4 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-100";
+            input.type = itemType === "number" ? "number" : "text";
+            if (itemType === "number") {
+              input.min = "1";
+              input.max = "65535";
+              input.step = "1";
+            }
+            input.value = itemType === "number" ? String(list[idx] ?? "") : String(list[idx] ?? "");
+            input.addEventListener("input", () => {
+              markDirty();
+              if (itemType === "number") {
+                const n = normalizeInt(input.value, NaN);
+                list[idx] = Number.isFinite(n) ? n : 0;
+              } else {
+                list[idx] = input.value;
+              }
+              validateAll();
+              renderAllLight();
+            });
+            row.appendChild(input);
+
+            const btnDel = document.createElement("button");
+            btnDel.type = "button";
+            btnDel.className = "btn btn-danger btn-sm mt-1";
+            btnDel.innerHTML = '<i class="fa-solid fa-trash"></i><span>删除</span>';
+            btnDel.addEventListener("click", () => {
+              list.splice(idx, 1);
+              markDirty();
+              validateAll();
+              renderAll();
+            });
+            row.appendChild(btnDel);
+
+            const errKey = `${path}[${idx}]`;
+            const errMsg = state.errors[errKey] || "";
+            const warnMsg = state.warnings[errKey] || "";
+
+            const msgBox = document.createElement("div");
+            msgBox.className = "ml-9 -mt-1 space-y-1";
+            const errEl = document.createElement("div");
+            errEl.className = "text-xs text-rose-600 dark:text-rose-300";
+            errEl.textContent = errMsg;
+            errEl.classList.toggle("hidden", !errMsg);
+            const warnEl = document.createElement("div");
+            warnEl.className = "text-xs text-amber-700 dark:text-amber-300";
+            warnEl.textContent = warnMsg;
+            warnEl.classList.toggle("hidden", !warnMsg);
+            msgBox.appendChild(errEl);
+            msgBox.appendChild(warnEl);
+
+            const wrap = document.createElement("div");
+            wrap.appendChild(row);
+            wrap.appendChild(msgBox);
+            wrap.dataset.index = String(idx);
+            wrap.draggable = true;
+
+            // drag events
+            wrap.addEventListener("dragstart", (ev) => {
+              ev.dataTransfer?.setData("text/plain", String(idx));
+              ev.dataTransfer && (ev.dataTransfer.effectAllowed = "move");
+            });
+            wrap.addEventListener("dragover", (ev) => {
+              ev.preventDefault();
+              ev.dataTransfer && (ev.dataTransfer.dropEffect = "move");
+            });
+            wrap.addEventListener("drop", (ev) => {
+              ev.preventDefault();
+              const from = Number(ev.dataTransfer?.getData("text/plain"));
+              const to = idx;
+              if (!Number.isInteger(from) || from === to) return;
+              const item = list.splice(from, 1)[0];
+              list.splice(to, 0, item);
+              markDirty();
+              validateAll();
+              renderAll();
+            });
+
+            return wrap;
+          };
+
+          list.forEach((_, idx) => container.appendChild(makeItemRow(idx)));
+        };
+
+        // -------------------------
+        // Routing rules UI
+        // -------------------------
+        const getRules = () => state.form.proxy_rules.routing.rules;
+        const getSelectedRuleIndex = () => {
+          const rules = getRules();
+          if (!rules.length) return -1;
+          const idx = rules.findIndex((r) => r.__ui_id === state.selectedRuleId);
+          return idx >= 0 ? idx : 0;
+        };
+
+        const getSelectedRule = () => {
+          const i = getSelectedRuleIndex();
+          return i >= 0 ? getRules()[i] : null;
+        };
+
+        const selectRuleByIndex = (idx) => {
+          const rules = getRules();
+          if (!rules.length) {
+            state.selectedRuleId = null;
+            return;
+          }
+          const i = Math.max(0, Math.min(idx, rules.length - 1));
+          state.selectedRuleId = rules[i].__ui_id;
+        };
+
+        const renderRuleList = () => {
+          const ul = $("ruleList");
+          if (!ul) return;
+          const rules = getRules();
+          ul.innerHTML = "";
+
+          rules.forEach((r, idx) => {
+            const li = document.createElement("li");
+            li.className =
+              "group mb-1 flex cursor-pointer items-center gap-2 rounded-lg border border-transparent px-2 py-2 hover:bg-slate-50 dark:hover:bg-slate-950/30";
+            const active = r.__ui_id === state.selectedRuleId;
+            if (active) {
+              li.className += " bg-teal-500/10 ring-1 ring-teal-500/30 dark:bg-teal-400/10";
+            }
+            li.draggable = true;
+
+            const handle = document.createElement("span");
+            handle.className = "text-slate-400 group-hover:text-slate-500 dark:group-hover:text-slate-300";
+            handle.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
+            li.appendChild(handle);
+
+            const title = document.createElement("div");
+            title.className = "min-w-0 flex-1";
+            const name = trim(r.name) || "(unnamed)";
+            title.innerHTML = `
+              <div class="truncate text-sm font-semibold">${escapeHtml(name)}</div>
+              <div class="truncate text-xs text-slate-500 dark:text-slate-400">${escapeHtml(r.action || "")}${state.form.proxy_rules.routing.priority_mode === "number" ? ` · priority=${escapeHtml(String(r.priority ?? 0))}` : ""}</div>
+            `;
+            li.appendChild(title);
+
+            const badge = document.createElement("span");
+            badge.className = r.enabled
+              ? "rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-200"
+              : "rounded-full bg-slate-500/10 px-2 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-500/20 dark:text-slate-300";
+            badge.textContent = r.enabled ? "ON" : "OFF";
+            li.appendChild(badge);
+
+            li.addEventListener("click", () => {
+              state.selectedRuleId = r.__ui_id;
+              renderRuleList();
+              renderRuleEditor();
+            });
+
+            // drag
+            li.addEventListener("dragstart", (ev) => {
+              ev.dataTransfer?.setData("text/plain", String(idx));
+              ev.dataTransfer && (ev.dataTransfer.effectAllowed = "move");
+            });
+            li.addEventListener("dragover", (ev) => {
+              ev.preventDefault();
+              ev.dataTransfer && (ev.dataTransfer.dropEffect = "move");
+            });
+            li.addEventListener("drop", (ev) => {
+              ev.preventDefault();
+              const from = Number(ev.dataTransfer?.getData("text/plain"));
+              const to = idx;
+              if (!Number.isInteger(from) || from === to) return;
+              const rules = getRules();
+              const item = rules.splice(from, 1)[0];
+              rules.splice(to, 0, item);
+              markDirty();
+              validateAll();
+              renderAll();
+            });
+
+            ul.appendChild(li);
+          });
+        };
+
+        const renderRuleEditor = () => {
+          const empty = $("ruleEditorEmpty");
+          const editor = $("ruleEditor");
+          const rule = getSelectedRule();
+          if (!empty || !editor) return;
+
+          const has = !!rule;
+          empty.classList.toggle("hidden", has);
+          editor.classList.toggle("hidden", !has);
+          if (!has) return;
+
+          // fill inputs
+          $("rule_name").value = String(rule.name ?? "");
+          $("rule_enabled").checked = !!rule.enabled;
+          $("rule_action").value = String(rule.action ?? "proxy");
+          $("rule_priority").value = String(rule.priority ?? 0);
+
+          // lists
+          renderSimpleList($("rule_ip_cidrs_v4"), `__selected.ip_cidrs_v4`, "text");
+          renderSimpleList($("rule_ip_cidrs_v6"), `__selected.ip_cidrs_v6`, "text");
+          renderSimpleList($("rule_domains"), `__selected.domains`, "text");
+          renderSimpleList($("rule_ports"), `__selected.ports`, "text");
+          renderSimpleList($("rule_protocols"), `__selected.protocols`, "text");
+          renderSelectedRuleMessages();
+        };
+
+        const renderSelectedRuleMessages = () => {
+          const editor = $("ruleEditor");
+          const rule = getSelectedRule();
+          if (!editor || !rule) return;
+
+          const ruleIdx = getSelectedRuleIndex();
+          const prefix = `proxy_rules.routing.rules[${ruleIdx}]`;
+
+          const setLocalErr = (localKey, realKey) => {
+            const el = editor.querySelector(`[data-error-for="${localKey}"]`);
+            if (!el) return;
+            const msg = state.errors[realKey] || "";
+            el.textContent = msg;
+            el.classList.toggle("hidden", !msg);
+          };
+          setLocalErr("__rule.name", `${prefix}.name`);
+          setLocalErr("__rule.enabled", `${prefix}.enabled`);
+          setLocalErr("__rule.action", `${prefix}.action`);
+          setLocalErr("__rule.priority", `${prefix}.priority`);
+
+          // rule-level warning（例如缺少匹配条件）
+          const levelMsg = $("ruleLevelMsg");
+          if (levelMsg) {
+            const msg = state.warnings[prefix] || "";
+            levelMsg.textContent = msg;
+            levelMsg.classList.toggle("hidden", !msg);
+          }
+        };
+
+        // Special mapping for rule list editor: use pseudo path "__selected.*"
+        const getPathWithSelected = (path) => {
+          if (!String(path).startsWith("__selected.")) return getPath(state.form, path);
+          const rule = getSelectedRule();
+          const sub = String(path).slice("__selected.".length);
+          if (!rule) return undefined;
+          return getPath(rule, sub);
+        };
+        const setPathWithSelected = (path, value) => {
+          if (!String(path).startsWith("__selected.")) return setPath(state.form, path, value);
+          const rule = getSelectedRule();
+          if (!rule) return;
+          const sub = String(path).slice("__selected.".length);
+          return setPath(rule, sub, value);
+        };
+
+        // unified list renderer (普通数组 + __selected.*)
+        renderSimpleList = (container, path, itemType) => {
+          const list = getPathWithSelected(path);
+          if (!container) return;
+          container.innerHTML = "";
+          if (!Array.isArray(list)) return;
+
+          const isRule = String(path).startsWith("__selected.");
+          const ruleIdx = isRule ? getSelectedRuleIndex() : -1;
+          const prefixBase = isRule ? `proxy_rules.routing.rules[${ruleIdx}].${String(path).slice("__selected.".length)}` : path;
+
+          const makeItemRow = (idx) => {
+            const wrap = document.createElement("div");
+            wrap.className = "space-y-1";
+            wrap.draggable = true;
+            wrap.dataset.index = String(idx);
+
+            const row = document.createElement("div");
+            row.className = "flex items-start gap-2";
+
+            const handle = document.createElement("button");
+            handle.type = "button";
+            handle.className = "mt-1.5 inline-flex min-h-10 min-w-10 items-center justify-center rounded-md px-2 py-1 text-slate-500 transition duration-200 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/60";
+            handle.title = "拖拽排序";
+            handle.innerHTML = '<i class="fa-solid fa-grip-vertical"></i>';
+            row.appendChild(handle);
+
+            const input = document.createElement("input");
+            input.className =
+              "w-full min-h-[44px] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm outline-none ring-teal-500/30 focus:ring-4 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-100";
+            input.type = itemType === "number" ? "number" : "text";
+            if (itemType === "number") {
+              input.min = "1";
+              input.max = "65535";
+              input.step = "1";
+            }
+            input.value = String(list[idx] ?? "");
+            const errEl = document.createElement("div");
+            errEl.className = "ml-9 text-xs text-rose-600 dark:text-rose-300";
+            const warnEl = document.createElement("div");
+            warnEl.className = "ml-9 text-xs text-amber-700 dark:text-amber-300";
+            const refreshMsg = () => {
+              const key = `${prefixBase}[${idx}]`;
+              const em = state.errors[key] || "";
+              const wm = state.warnings[key] || "";
+              errEl.textContent = em;
+              errEl.classList.toggle("hidden", !em);
+              warnEl.textContent = wm;
+              warnEl.classList.toggle("hidden", !wm);
+            };
+            input.addEventListener("input", () => {
+              markDirty();
+              if (itemType === "number") {
+                const n = normalizeInt(input.value, NaN);
+                list[idx] = Number.isFinite(n) ? n : 0;
+              } else {
+                list[idx] = input.value;
+              }
+              validateAll();
+              refreshMsg();
+              renderAllLight();
+            });
+            row.appendChild(input);
+
+            const btnDel = document.createElement("button");
+            btnDel.type = "button";
+            btnDel.className = "btn btn-danger btn-sm mt-1";
+            btnDel.innerHTML = '<i class="fa-solid fa-trash"></i><span>删除</span>';
+            btnDel.addEventListener("click", () => {
+              list.splice(idx, 1);
+              markDirty();
+              validateAll();
+              renderAll();
+            });
+            row.appendChild(btnDel);
+
+            wrap.appendChild(row);
+            wrap.appendChild(errEl);
+            wrap.appendChild(warnEl);
+            refreshMsg();
+
+            // drag
+            wrap.addEventListener("dragstart", (ev) => {
+              ev.dataTransfer?.setData("text/plain", String(idx));
+              ev.dataTransfer && (ev.dataTransfer.effectAllowed = "move");
+            });
+            wrap.addEventListener("dragover", (ev) => {
+              ev.preventDefault();
+              ev.dataTransfer && (ev.dataTransfer.dropEffect = "move");
+            });
+            wrap.addEventListener("drop", (ev) => {
+              ev.preventDefault();
+              const from = Number(ev.dataTransfer?.getData("text/plain"));
+              const to = idx;
+              if (!Number.isInteger(from) || from === to) return;
+              const item = list.splice(from, 1)[0];
+              list.splice(to, 0, item);
+              markDirty();
+              validateAll();
+              renderAll();
+            });
+
+            return wrap;
+          };
+
+          list.forEach((_, idx) => container.appendChild(makeItemRow(idx)));
+        };
+
+        // -------------------------
+        // Lightweight render (for typing)
+        // -------------------------
+        const renderAllLight = () => {
+          renderStatus();
+          renderStats();
+          renderErrorSummary();
+          renderSchemaDriftSummary();
+          renderFieldErrors();
+          renderJsonPreview();
+          renderSelectedRuleMessages();
+        };
+
+        const renderAll = () => {
+          renderNav();
+          renderPanels();
+          setFormToInputs();
+          validateAll();
+          renderAllowedPorts();
+          renderUpdateMirrors();
+          renderTargetProcesses();
+          renderChildExclude();
+          renderRuleList();
+          renderRuleEditor();
+          renderAllLight();
+        };
+
+        // -------------------------
+        // Per-section list renderers
+        // -------------------------
+        const renderAllowedPorts = () => {
+          renderSimpleList($("allowedPortsList"), "proxy_rules.allowed_ports", "number");
+        };
+        const renderUpdateMirrors = () => {
+          renderSimpleList($("updateMirrorsList"), "updates.mirrors", "text");
+        };
+        const renderTargetProcesses = () => {
+          renderSimpleList($("targetProcessesList"), "target_processes", "text");
+        };
+        const renderChildExclude = () => {
+          renderSimpleList($("childExcludeList"), "child_injection_exclude", "text");
+        };
+
+        // -------------------------
+        // Theme
+        // -------------------------
+        const THEME_KEY = "ag_config_web_theme_v1";
+        const applyTheme = (mode) => {
+          const root = document.documentElement;
+          const isDark = mode !== "light";
+          root.classList.toggle("dark", isDark);
+          $("themeIcon").className = `fa-solid ${isDark ? "fa-moon" : "fa-sun"} text-slate-500 dark:text-slate-400`;
+          $("themeText").textContent = isDark ? "暗色" : "亮色";
+        };
+        const loadTheme = () => {
+          try {
+            const saved = localStorage.getItem(THEME_KEY);
+            if (saved === "light") return "light";
+          } catch (_) {}
+          return "dark";
+        };
+        const saveTheme = (mode) => {
+          try {
+            localStorage.setItem(THEME_KEY, mode);
+          } catch (_) {}
+        };
+
+        // -------------------------
+        // Import / Presets
+        // -------------------------
+        const loadForm = async (raw, options = {}) => {
+          const loadedName = options.loadedName || "（无）";
+          state.loading = true;
+          ui.setLoading(true);
+          ui.setParseError("");
+          await new Promise((r) => setTimeout(r, 250));
+
+          state.baseRaw = raw && typeof raw === "object" ? deepClone(raw) : {};
+          state.form = normalizeForm(state.baseRaw);
+          state.loadedName = loadedName;
+          $("loadedName").textContent = loadedName;
+          state.mode = "ready";
+          state.dirty = false;
+          $("dirtyBadge")?.classList.add("hidden");
+
+          // selection
+          const rules = state.form.proxy_rules.routing.rules;
+          state.selectedRuleId = rules[0]?.__ui_id || null;
+
+          ui.setEmptyOverlay(false);
+          validateAll();
+          renderAll();
+
+          state.loading = false;
+          ui.setLoading(false);
+          if (!options.silent) ui.toast(options.toastMessage || "配置已载入", "success");
+        };
+
+        const applyPreset = async (presetKey) => {
+          // default 预设直接载入空对象，由 normalizeForm 生成默认值
+          if (presetKey === "default") {
+            await loadForm({}, { loadedName: "模板：默认（build.ps1）", toastMessage: "已载入默认模板" });
+            return;
+          }
+
+          // 其他预设基于当前配置修改
+          const base = exportObject(); // preserve unknown from current baseRaw
+          const next = deepClone(base);
+          const f = normalizeForm(next);
+
+          // Start from current normalized form to keep version/build meta
+          const form = f;
+
+          if (presetKey === "global_proxy") {
+            form.proxy_rules.allowed_ports = [];
+            form.proxy_rules.dns_mode = "proxy";
+          } else if (presetKey === "https_only") {
+            form.proxy_rules.allowed_ports = [443];
+          } else if (presetKey === "direct_all") {
+            form.proxy.port = 0;
+          }
+
+          // Keep unknown fields but override known with new form
+          state.baseRaw = deepClone(state.baseRaw || {});
+          state.form = form;
+          state.loadedName = `模板：${presetKey}`;
+          $("loadedName").textContent = state.loadedName;
+          state.mode = "ready";
+          state.dirty = true;
+          $("dirtyBadge")?.classList.remove("hidden");
+          state.selectedRuleId = state.form.proxy_rules.routing.rules[0]?.__ui_id || null;
+          validateAll();
+          renderAll();
+          ui.setEmptyOverlay(false);
+          ui.toast("已应用模板（建议导出备份）", "success");
+        };
+
+        // -------------------------
+        // Export
+        // -------------------------
+        const downloadText = (filename, text) => {
+          const blob = new Blob([text], { type: "application/json;charset=utf-8" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        };
+
+        const exportConfig = () => {
+          validateAll();
+          renderAllLight();
+          if (hasErrors()) {
+            ui.toast("存在校验错误，请先修复后再导出", "error");
+            return;
+          }
+          const out = exportObject();
+          const json = JSON.stringify(out, null, 2);
+          downloadText("config.json", json + "\n");
+          state.dirty = false;
+          $("dirtyBadge")?.classList.add("hidden");
+          ui.toast("导出成功：config.json", "success");
+        };
+
+        // -------------------------
+        // DOM helpers
+        // -------------------------
+        const escapeHtml = (s) =>
+          String(s ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+
+        // -------------------------
+        // Event bindings
+        // -------------------------
+        const bindNav = () => {
+          $$("button.nav-btn", $("sideNav")).forEach((btn) => {
+            btn.addEventListener("click", () => {
+              state.ui.section = btn.dataset.section || "overview";
+              renderNav();
+              renderPanels();
+            });
+          });
+        };
+
+        const bindDataInputs = () => {
+          $$("[data-bind]").forEach((el) => {
+            const path = el.dataset.bind;
+            const handler = () => {
+              if (state.mode !== "ready") return;
+              markDirty();
+              if (el.type === "checkbox") {
+                setPath(state.form, path, !!el.checked);
+              } else if (el.type === "number") {
+                const n = normalizeInt(el.value, NaN);
+                setPath(state.form, path, Number.isFinite(n) ? n : 0);
+              } else {
+                setPath(state.form, path, el.value);
+              }
+              validateAll();
+              renderAllLight();
+            };
+            el.addEventListener("input", handler);
+            el.addEventListener("change", handler);
+          });
+        };
+
+        const bindRuleEditor = () => {
+          const onChange = () => {
+            const rule = getSelectedRule();
+            if (!rule) return;
+            markDirty();
+            rule.name = $("rule_name").value;
+            rule.enabled = !!$("rule_enabled").checked;
+            rule.action = $("rule_action").value;
+            rule.priority = normalizeInt($("rule_priority").value, 0);
+            validateAll();
+            renderRuleList();
+            renderAllLight();
+          };
+          ["rule_name", "rule_enabled", "rule_action", "rule_priority"].forEach((id) => {
+            const el = $(id);
+            if (!el) return;
+            el.addEventListener("input", onChange);
+            el.addEventListener("change", onChange);
+          });
+
+          // list add buttons inside rule editor
+          $$("[data-list-add]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const key = btn.dataset.listAdd || "";
+              const rule = getSelectedRule();
+              if (!rule) return;
+              markDirty();
+              const map = {
+                "rule.ip_cidrs_v4": rule.ip_cidrs_v4,
+                "rule.ip_cidrs_v6": rule.ip_cidrs_v6,
+                "rule.domains": rule.domains,
+                "rule.ports": rule.ports,
+                "rule.protocols": rule.protocols,
+              };
+              const arr = map[key];
+              if (!Array.isArray(arr)) return;
+              arr.push("");
+              validateAll();
+              renderRuleEditor();
+              renderAllLight();
+            });
+          });
+
+          $("btnProtoAddTcp")?.addEventListener("click", () => {
+            const rule = getSelectedRule();
+            if (!rule) return;
+            if (!Array.isArray(rule.protocols)) rule.protocols = [];
+            if (!rule.protocols.map((x) => toLower(trim(x))).includes("tcp")) {
+              rule.protocols.push("tcp");
+              markDirty();
+              validateAll();
+              renderRuleEditor();
+              renderAllLight();
+            }
+          });
+        };
+
+        const bindActions = () => {
+          // file import
+          $("fileInput")?.addEventListener("change", (ev) => {
+            const file = ev.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async () => {
+              try {
+                const json = JSON.parse(String(reader.result || "{}"));
+                await loadForm(json, { loadedName: file.name, toastMessage: "已导入配置" });
+              } catch (e) {
+                ui.setParseError("JSON 解析失败: " + (e?.message || String(e)));
+                ui.toast("JSON 解析失败", "error");
+                state.mode = "empty";
+                ui.setEmptyOverlay(true);
+              }
+            };
+            reader.readAsText(file);
+            ev.target.value = "";
+          });
+
+          // export
+          $("btnExport")?.addEventListener("click", exportConfig);
+
+          // presets
+          const openPresets = () => {
+            $("presetModal")?.classList.remove("hidden");
+          };
+          const closePresets = () => {
+            $("presetModal")?.classList.add("hidden");
+          };
+          $("btnOpenPresets")?.addEventListener("click", openPresets);
+          $("btnClosePresets")?.addEventListener("click", closePresets);
+          $("presetModal")?.addEventListener("click", (ev) => {
+            if (ev.target === $("presetModal")) closePresets();
+          });
+          $$(".preset-card").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+              closePresets();
+              const key = btn.dataset.preset || "default";
+              await applyPreset(key);
+            });
+          });
+
+          $("btnPresetDefault")?.addEventListener("click", async () => {
+            try {
+              console.log("[btnPresetDefault] clicked");
+              await applyPreset("default");
+              console.log("[btnPresetDefault] applyPreset done");
+            } catch (e) {
+              console.error("[btnPresetDefault] error:", e);
+              ui.toast("载入失败: " + (e?.message || String(e)), "error");
+            }
+          });
+          $("btnEmptyLoadDefault")?.addEventListener("click", async () => {
+            await applyPreset("default");
+          });
+
+          // reset to empty
+          $("btnResetToEmpty")?.addEventListener("click", () => {
+            state.mode = "empty";
+            state.dirty = false;
+            state.loadedName = "（无）";
+            $("loadedName").textContent = "（无）";
+            $("dirtyBadge")?.classList.add("hidden");
+            ui.setParseError("");
+            ui.setEmptyOverlay(true);
+            validateAll();
+            renderAllLight();
+          });
+
+          // list add buttons
+          $("btnAllowedPortsAdd")?.addEventListener("click", () => {
+            state.form.proxy_rules.allowed_ports.push(80);
+            markDirty();
+            validateAll();
+            renderAllowedPorts();
+            renderAllLight();
+          });
+          $("btnAllowedPortsClear")?.addEventListener("click", () => {
+            state.form.proxy_rules.allowed_ports = [];
+            markDirty();
+            validateAll();
+            renderAllowedPorts();
+            renderAllLight();
+          });
+          $("btnUpdateMirrorsAdd")?.addEventListener("click", () => {
+            state.form.updates.mirrors.push("https://");
+            markDirty();
+            validateAll();
+            renderUpdateMirrors();
+            renderAllLight();
+          });
+          $("btnTargetProcessesAdd")?.addEventListener("click", () => {
+            state.form.target_processes.push("");
+            markDirty();
+            validateAll();
+            renderTargetProcesses();
+            renderAllLight();
+          });
+          $("btnChildExcludeAdd")?.addEventListener("click", () => {
+            state.form.child_injection_exclude.push("");
+            markDirty();
+            validateAll();
+            renderChildExclude();
+            renderAllLight();
+          });
+
+          // build date refresh
+          $("btnRefreshBuildDate")?.addEventListener("click", () => {
+            state.form._build.date = formatNow();
+            markDirty();
+            renderMetaDate();
+            validateAll();
+            renderAllLight();
+          });
+
+          // preview toggle / copy
+          $("btnTogglePreview")?.addEventListener("click", () => {
+            state.ui.previewOpen = !state.ui.previewOpen;
+            $("previewBody")?.classList.toggle("hidden", !state.ui.previewOpen);
+            const icon = $("btnTogglePreview")?.querySelector("i");
+            if (icon) icon.className = `fa-solid ${state.ui.previewOpen ? "fa-chevron-down" : "fa-chevron-up"}`;
+            const span = $("btnTogglePreview")?.querySelector("span");
+            if (span) span.textContent = state.ui.previewOpen ? "折叠" : "展开";
+          });
+          $("btnCopyJson")?.addEventListener("click", async () => {
+            try {
+              const text = $("jsonPreview")?.textContent || "";
+              await navigator.clipboard.writeText(text);
+              ui.toast("已复制 JSON", "success");
+            } catch (e) {
+              ui.toast("复制失败（浏览器可能禁止剪贴板）", "error");
+            }
+          });
+          $("btnRefreshPreview")?.addEventListener("click", renderJsonPreview);
+
+          // theme
+          $("btnToggleTheme")?.addEventListener("click", () => {
+            const cur = document.documentElement.classList.contains("dark") ? "dark" : "light";
+            const next = cur === "dark" ? "light" : "dark";
+            applyTheme(next);
+            saveTheme(next);
+          });
+
+          // routing rule ops
+          $("btnAddRule")?.addEventListener("click", () => {
+            const rules = getRules();
+            rules.push(defaultRoutingRule(rules.length));
+            selectRuleByIndex(rules.length - 1);
+            markDirty();
+            validateAll();
+            renderAll();
+            ui.toast("已新增规则", "success");
+          });
+          $("btnCloneRule")?.addEventListener("click", () => {
+            const rule = getSelectedRule();
+            if (!rule) return;
+            const rules = getRules();
+            const clone = deepClone(rule);
+            clone.__ui_id = crypto?.randomUUID ? crypto.randomUUID() : `rule_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+            clone.name = `${trim(rule.name) || "rule"}-副本`;
+            rules.push(clone);
+            selectRuleByIndex(rules.length - 1);
+            markDirty();
+            validateAll();
+            renderAll();
+            ui.toast("已复制规则", "success");
+          });
+          $("btnDeleteRule")?.addEventListener("click", () => {
+            const idx = getSelectedRuleIndex();
+            if (idx < 0) return;
+            const rules = getRules();
+            rules.splice(idx, 1);
+            selectRuleByIndex(Math.min(idx, rules.length - 1));
+            markDirty();
+            validateAll();
+            renderAll();
+            ui.toast("已删除规则", "success");
+          });
+          $("btnMoveRuleUp")?.addEventListener("click", () => {
+            const i = getSelectedRuleIndex();
+            if (i <= 0) return;
+            const rules = getRules();
+            [rules[i - 1], rules[i]] = [rules[i], rules[i - 1]];
+            selectRuleByIndex(i - 1);
+            markDirty();
+            validateAll();
+            renderAll();
+          });
+          $("btnMoveRuleDown")?.addEventListener("click", () => {
+            const i = getSelectedRuleIndex();
+            const rules = getRules();
+            if (i < 0 || i >= rules.length - 1) return;
+            [rules[i + 1], rules[i]] = [rules[i], rules[i + 1]];
+            selectRuleByIndex(i + 1);
+            markDirty();
+            validateAll();
+            renderAll();
+          });
+
+          // -------------------------
+          // 代理连通性测试
+          // -------------------------
+          const QUICK_PROXY_PRESETS = {
+            clash: { host: "127.0.0.1", port: 7890, type: "socks5" },
+            v2rayn: { host: "127.0.0.1", port: 10808, type: "socks5" },
+            ss: { host: "127.0.0.1", port: 1080, type: "socks5" },
+            surge: { host: "127.0.0.1", port: 6153, type: "socks5" },
+          };
+          const BATCH_SCAN_PORTS = [7890, 7891, 10808, 10809, 1080, 1089, 8889, 6152, 6153];
+          const PROXY_TEST_TIMEOUT = 5000;
+
+          // 快速填充
+          $$("[data-quick-proxy]").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              const key = btn.dataset.quickProxy;
+              const preset = QUICK_PROXY_PRESETS[key];
+              if (!preset) return;
+              state.form.proxy.host = preset.host;
+              state.form.proxy.port = preset.port;
+              state.form.proxy.type = preset.type;
+              markDirty();
+              setFormToInputs();
+              validateAll();
+              renderAllLight();
+              ui.toast(`已填充 ${key} 默认配置`, "success");
+            });
+          });
+
+          // 显示测试结果
+          const showProxyTestResult = (type, message, details) => {
+            const el = $("proxyTestResult");
+            if (!el) return;
+            el.classList.remove("hidden");
+            const styles = {
+              success: "bg-emerald-500/10 text-emerald-800 ring-1 ring-emerald-500/20 dark:text-emerald-200",
+              error: "bg-rose-500/10 text-rose-800 ring-1 ring-rose-500/20 dark:text-rose-200",
+              warn: "bg-amber-500/10 text-amber-800 ring-1 ring-amber-500/20 dark:text-amber-200",
+            };
+            el.className = `rounded-lg p-3 text-sm ${styles[type] || styles.warn}`;
+            const icons = { success: "fa-circle-check", error: "fa-circle-xmark", warn: "fa-triangle-exclamation" };
+            el.innerHTML = `
+              <div class="flex items-start gap-2">
+                <i class="fa-solid ${icons[type] || icons.warn} mt-0.5"></i>
+                <div class="min-w-0">
+                  <div class="font-semibold">${escapeHtml(message)}</div>
+                  ${details ? `<div class="mt-1 text-xs opacity-80">${escapeHtml(details)}</div>` : ""}
+                </div>
+              </div>
+            `;
+          };
+
+          const hideProxyTestResult = () => {
+            $("proxyTestResult")?.classList.add("hidden");
+            $("socks5CmdHint")?.classList.add("hidden");
+            $("batchScanResult")?.classList.add("hidden");
+          };
+
+          const setProxyTestLoading = (on) => {
+            $("proxyTestSpinner")?.classList.toggle("hidden", !on);
+            const btn = $("btnTestProxy");
+            const batchBtn = $("btnTestBatchPorts");
+            if (btn) btn.disabled = on;
+            if (batchBtn) batchBtn.disabled = on;
+          };
+
+          // 显示 SOCKS5 命令行提示
+          const showSocks5CmdHint = (host, port) => {
+            const hint = $("socks5CmdHint");
+            if (!hint) return;
+            hint.classList.remove("hidden");
+            const psCmd = $("socks5CmdPs");
+            const curlCmd = $("socks5CmdCurl");
+            if (psCmd) psCmd.textContent = `Test-NetConnection -ComputerName ${host} -Port ${port}`;
+            if (curlCmd) curlCmd.textContent = `curl -x socks5://${host}:${port} https://www.google.com -v --connect-timeout 5`;
+          };
+
+          // 测试单个端口连通性（仅 TCP 端口扫描）
+          const testPortReachable = (host, port, timeout = 3000) => {
+            return new Promise((resolve) => {
+              // 使用 fetch 尝试连接（会被 CORS 拒绝，但能检测端口是否开放）
+              const controller = new AbortController();
+              const timer = setTimeout(() => {
+                controller.abort();
+                resolve({ ok: false, reason: "超时" });
+              }, timeout);
+
+              // 尝试用 HTTP 请求探测端口（即使失败也能判断端口是否开放）
+              fetch(`http://${host}:${port}/`, {
+                method: "HEAD",
+                mode: "no-cors",
+                signal: controller.signal,
+              })
+                .then(() => {
+                  clearTimeout(timer);
+                  resolve({ ok: true });
+                })
+                .catch((err) => {
+                  clearTimeout(timer);
+                  const msg = String(err?.message || err).toLowerCase();
+                  // 这些错误表示端口开放但连接被拒绝（正常情况，代理端口不响应 HTTP HEAD）
+                  if (msg.includes("failed to fetch") || msg.includes("network") || msg.includes("cors")) {
+                    // 无法确定，可能开放也可能关闭
+                    resolve({ ok: false, reason: "无法确定（可能被防火墙阻止）", uncertain: true });
+                  } else if (msg.includes("abort")) {
+                    resolve({ ok: false, reason: "超时" });
+                  } else {
+                    resolve({ ok: false, reason: msg });
+                  }
+                });
+            });
+          };
+
+          // 测试代理连通性
+          $("btnTestProxy")?.addEventListener("click", async () => {
+            hideProxyTestResult();
+            const host = trim(state.form.proxy.host) || "127.0.0.1";
+            const port = state.form.proxy.port;
+            const type = state.form.proxy.type || "socks5";
+
+            if (!port || port <= 0 || port > 65535) {
+              showProxyTestResult("error", "端口无效", "请输入有效的端口号 (1-65535)");
+              return;
+            }
+
+            setProxyTestLoading(true);
+
+            // SOCKS5 代理浏览器无法直接测试
+            if (type === "socks5") {
+              // 尝试 TCP 端口探测
+              const result = await testPortReachable(host, port, PROXY_TEST_TIMEOUT);
+              setProxyTestLoading(false);
+
+              if (result.ok) {
+                showProxyTestResult("warn", `端口 ${host}:${port} 可能开放`, "浏览器无法直接验证 SOCKS5 协议，请使用命令行进一步确认");
+              } else if (result.uncertain) {
+                showProxyTestResult("warn", `无法确定 ${host}:${port} 状态`, "浏览器安全限制，请使用命令行验证");
+              } else {
+                showProxyTestResult("error", `端口 ${host}:${port} 连接失败`, `${result.reason}。请确认代理软件已启动。`);
+              }
+              showSocks5CmdHint(host, port);
+              return;
+            }
+
+            // HTTP 代理：尝试通过代理访问测试 URL
+            try {
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), PROXY_TEST_TIMEOUT);
+
+              // 注意：浏览器不支持通过 JS 设置 HTTP 代理，这里仅测试端口是否响应
+              const result = await testPortReachable(host, port, PROXY_TEST_TIMEOUT);
+              clearTimeout(timer);
+              setProxyTestLoading(false);
+
+              if (result.ok || result.uncertain) {
+                showProxyTestResult("warn", `端口 ${host}:${port} 可能可用`, "浏览器安全限制无法完全验证 HTTP 代理。建议：确认代理软件已启动并监听该端口。");
+              } else {
+                showProxyTestResult("error", `连接失败: ${host}:${port}`, `${result.reason}。建议：1) 确认代理软件已启动；2) 检查端口配置是否正确；3) 检查防火墙设置。`);
+              }
+            } catch (err) {
+              setProxyTestLoading(false);
+              showProxyTestResult("error", "测试失败", String(err?.message || err));
+            }
+          });
+
+          // 批量扫描端口
+          $("btnTestBatchPorts")?.addEventListener("click", async () => {
+            hideProxyTestResult();
+            const host = trim(state.form.proxy.host) || "127.0.0.1";
+            const resultEl = $("batchScanResult");
+            const listEl = $("batchScanList");
+            if (!resultEl || !listEl) return;
+
+            setProxyTestLoading(true);
+            resultEl.classList.remove("hidden");
+            listEl.innerHTML = BATCH_SCAN_PORTS.map((p) => `
+              <div class="flex items-center gap-2 rounded-md bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800/60" data-scan-port="${p}">
+                <div class="h-3 w-3 animate-pulse rounded-full bg-slate-300 dark:bg-slate-600"></div>
+                <span class="font-mono">${p}</span>
+                <span class="text-slate-500">扫描中...</span>
+              </div>
+            `).join("");
+
+            // 并行扫描所有端口
+            const results = await Promise.all(
+              BATCH_SCAN_PORTS.map(async (port) => {
+                const r = await testPortReachable(host, port, 3000);
+                return { port, ...r };
+              })
+            );
+
+            setProxyTestLoading(false);
+
+            // 更新结果
+            results.forEach((r) => {
+              const el = listEl.querySelector(`[data-scan-port="${r.port}"]`);
+              if (!el) return;
+              const dot = el.querySelector("div");
+              const status = el.querySelectorAll("span")[1];
+              if (dot) {
+                dot.classList.remove("animate-pulse", "bg-slate-300", "dark:bg-slate-600");
+                if (r.ok) {
+                  dot.classList.add("bg-emerald-500");
+                } else if (r.uncertain) {
+                  dot.classList.add("bg-amber-500");
+                } else {
+                  dot.classList.add("bg-rose-500");
+                }
+              }
+              if (status) {
+                if (r.ok) {
+                  status.textContent = "可能开放";
+                  status.className = "text-emerald-600 dark:text-emerald-300";
+                } else if (r.uncertain) {
+                  status.textContent = "不确定";
+                  status.className = "text-amber-600 dark:text-amber-300";
+                } else {
+                  status.textContent = r.reason || "关闭";
+                  status.className = "text-rose-600 dark:text-rose-300";
+                }
+              }
+            });
+
+            // 找到可能开放的端口
+            const openPorts = results.filter((r) => r.ok || r.uncertain);
+            if (openPorts.length > 0) {
+              ui.toast(`发现 ${openPorts.length} 个可能开放的端口`, "success");
+            } else {
+              ui.toast("未发现开放端口，请确认代理软件已启动", "warn");
+            }
+          });
+        };
+
+        // Drag&Drop import (空态可拖拽；Ready 状态也支持拖入覆盖)
+        const bindDragDrop = () => {
+          const zone = $("dropZone");
+          if (zone) {
+            ["dragenter", "dragover"].forEach((evt) => {
+              zone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                zone.classList.add("ring-4", "ring-teal-500/20");
+              });
+            });
+            ["dragleave", "drop"].forEach((evt) => {
+              zone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                zone.classList.remove("ring-4", "ring-teal-500/20");
+              });
+            });
+            zone.addEventListener("drop", async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const file = e.dataTransfer?.files?.[0];
+              if (!file) return;
+              try {
+                const text = await file.text();
+                const json = JSON.parse(text);
+                await loadForm(json, { loadedName: file.name, toastMessage: "已导入配置" });
+              } catch (err) {
+                ui.setParseError("JSON 解析失败: " + (err?.message || String(err)));
+                ui.toast("JSON 解析失败", "error");
+                state.mode = "empty";
+                ui.setEmptyOverlay(true);
+              }
+            });
+          }
+
+          // 全局拖入覆盖：避免用户必须回到空态
+          document.addEventListener("dragover", (e) => {
+            e.preventDefault();
+          });
+          document.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            // 若 drop 发生在 overlay 之外也接受
+            const zone = $("dropZone");
+            if (zone && zone.contains(e.target)) return;
+            const file = e.dataTransfer?.files?.[0];
+            if (!file) return;
+            if (!/\\.json$/i.test(file.name) && file.type !== "application/json") {
+              // 不强制，但给提示
+              ui.toast("提示：请选择 config.json（JSON 文件）", "warn");
+            }
+            try {
+              const text = await file.text();
+              const json = JSON.parse(text);
+              await loadForm(json, { loadedName: file.name, toastMessage: "已导入配置" });
+            } catch (err) {
+              ui.toast("JSON 解析失败", "error");
+              ui.setParseError("JSON 解析失败: " + (err?.message || String(err)));
+              state.mode = "empty";
+              ui.setEmptyOverlay(true);
+            }
+          });
+        };
+
+        // -------------------------
+        // Init
+        // -------------------------
+        const init = async () => {
+          // theme
+          const theme = loadTheme();
+          applyTheme(theme);
+
+          // nav base styles
+        $$("button.nav-btn").forEach((btn) => {
+          btn.classList.add(
+            "flex",
+            "items-center",
+            "gap-2",
+            "rounded-xl",
+            "min-h-11",
+            "px-3",
+            "py-2",
+            "text-sm",
+            "text-slate-700",
+            "transition",
+            "duration-200",
+            "hover:-translate-y-0.5",
+            "active:translate-y-0",
+            "motion-reduce:transform-none",
+            "hover:bg-slate-100",
+            "dark:text-slate-200",
+            "dark:hover:bg-slate-800/60"
+          );
+        });
+        $$("button.nav-btn .nav-ico").forEach((ico) => {
+          ico.classList.add(
+            "inline-flex",
+            "h-8",
+            "w-8",
+            "items-center",
+            "justify-center",
+            "rounded-lg",
+            "bg-slate-100",
+            "text-slate-500",
+            "ring-1",
+            "ring-slate-200",
+            "dark:bg-slate-800/70",
+            "dark:text-slate-300",
+            "dark:ring-slate-700"
+          );
+        });
+
+          bindNav();
+          bindDataInputs();
+          bindRuleEditor();
+          bindActions();
+          bindDragDrop();
+
+          // 前端字段漂移自检（不阻断使用，但会给出可见提示）
+          runSchemaDriftCheck();
+          if ((state.schemaIssues || []).length > 0) {
+            console.warn("[SchemaDriftCheck]", state.schemaIssues);
+            ui.toast(`字段同步自检发现 ${state.schemaIssues.length} 个潜在问题，请检查侧栏提示`, "warn");
+          }
+
+          // 自动载入默认模板（跳过空态，提升首次体验）
+          // 用户仍可通过"导入"覆盖，或点击"重置"回到空态
+          await loadForm({}, { loadedName: "默认模板（build.ps1）", toastMessage: "已自动载入默认模板", silent: false });
+        };
+
+        init();
+      })();
+    </script>
+
+    <!-- Tailwind-only component helpers (no custom CSS) -->
+    <script>
+      // 通过 JS 给部分组件补全通用 Tailwind 类（避免在 HTML 中重复写大量 class）。
+      (() => {
+        const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+        // panel styles
+        $$("section.panel").forEach((p) => {
+          p.classList.add("rounded-2xl", "border", "border-slate-200", "bg-white/85", "shadow-md", "shadow-slate-900/5", "backdrop-blur-sm", "dark:border-slate-800", "dark:bg-slate-900/40", "dark:shadow-black/20");
+        });
+        $$("section.panel .panel-hd").forEach((hd) => {
+          hd.classList.add("flex", "flex-col", "gap-3", "border-b", "border-slate-200", "px-5", "py-4", "dark:border-slate-800", "md:flex-row", "md:items-center", "md:justify-between");
+        });
+        $$("section.panel .panel-bd").forEach((bd) => {
+          bd.classList.add("px-5", "py-5");
+        });
+        $$("section.panel .panel-title").forEach((t) => {
+          t.classList.add("text-base", "font-semibold");
+        });
+        $$("section.panel .panel-subtitle").forEach((t) => {
+          t.classList.add("mt-1", "text-sm", "text-slate-500", "dark:text-slate-400");
+        });
+
+        // buttons
+        $$("button.btn").forEach((b) => {
+          b.classList.add("inline-flex", "min-h-11", "items-center", "gap-2", "rounded-xl", "px-3", "py-2", "text-sm", "shadow-sm", "transition", "duration-200", "hover:-translate-y-0.5", "active:translate-y-0", "motion-reduce:transform-none");
+        });
+        $$("button.btn-ghost").forEach((b) => {
+          b.classList.add("border", "border-slate-200", "bg-white", "text-slate-700", "hover:bg-slate-50", "dark:border-slate-800", "dark:bg-slate-950/30", "dark:text-slate-200", "dark:hover:bg-slate-800/60");
+        });
+        $$("button.btn-primary").forEach((b) => {
+          b.classList.add("bg-teal-700", "text-white", "shadow-md", "shadow-teal-700/20", "hover:bg-teal-600");
+        });
+        $$("button.btn-danger").forEach((b) => {
+          b.classList.add("bg-rose-600", "text-white", "shadow-md", "shadow-rose-600/20", "hover:bg-rose-500");
+        });
+        $$("button.btn-sm").forEach((b) => {
+          b.classList.remove("px-3", "py-2", "text-sm");
+          b.classList.add("min-h-10", "px-2", "py-1.5", "text-xs");
+        });
+
+        // preset cards
+        $$("button.preset-card").forEach((b) => {
+          b.classList.add(
+            "rounded-xl",
+            "border",
+            "border-slate-200",
+            "bg-slate-50",
+            "p-4",
+            "text-left",
+            "shadow-sm",
+            "transition",
+            "duration-200",
+            "hover:-translate-y-0.5",
+            "motion-reduce:transform-none",
+            "hover:bg-white",
+            "dark:border-slate-800",
+            "dark:bg-slate-950/30",
+            "dark:hover:bg-slate-900/60"
+          );
+        });
+        $$("button.preset-card .preset-title").forEach((t) => t.classList.add("text-sm", "font-semibold"));
+        $$("button.preset-card .preset-desc").forEach((t) => t.classList.add("mt-1", "text-xs", "text-slate-500", "dark:text-slate-400"));
+
+        // field styles
+        $$("div.field").forEach((f) => f.classList.add("flex", "flex-col", "gap-1"));
+        $$("label.field-label").forEach((l) => l.classList.add("flex", "items-center", "gap-2", "text-sm", "font-semibold", "text-slate-700", "dark:text-slate-200"));
+        $$("input.field-input, select.field-input").forEach((i) =>
+          i.classList.add(
+            "w-full",
+            "min-h-[44px]",
+            "rounded-lg",
+            "border",
+            "border-slate-200",
+            "bg-white",
+            "px-3",
+            "py-2",
+            "text-sm",
+            "text-slate-900",
+            "shadow-sm",
+            "outline-none",
+            "ring-teal-500/30",
+            "focus:ring-4",
+            "dark:border-slate-800",
+            "dark:bg-slate-950/40",
+            "dark:text-slate-100"
+          )
+        );
+        $$("div.field-error").forEach((e) => {
+          e.classList.add("hidden", "text-xs", "text-rose-600", "dark:text-rose-300");
+        });
+
+        // toggle (pure Tailwind)
+        $$("label.toggle").forEach((t) => t.classList.add("inline-flex", "min-h-11", "items-center", "gap-3"));
+        $$("label.toggle input[type=checkbox]").forEach((i) => i.classList.add("peer", "hidden"));
+        $$("label.toggle span.toggle-ui").forEach((ui) => {
+          ui.classList.add(
+            "relative",
+            "h-6",
+            "w-11",
+            "cursor-pointer",
+            "rounded-full",
+            "bg-slate-200",
+            "ring-1",
+            "ring-slate-300",
+            "transition",
+            "peer-checked:bg-teal-600",
+            "peer-checked:ring-teal-500/40",
+            "dark:bg-slate-800",
+            "dark:ring-slate-700"
+          );
+          // 让子元素圆点在 peer checked 时平移（无需自定义 CSS）
+          ui.classList.add("peer-checked:[&>span]:translate-x-5");
+          ui.innerHTML =
+            '<span class="absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow transition"></span>';
+        });
+
+        // tooltip
+        $$("span.tip").forEach((t) => {
+          t.classList.add("relative", "inline-flex", "items-center", "text-slate-400", "hover:text-slate-500", "dark:hover:text-slate-300");
+          const icon = t.querySelector("i");
+          if (icon) icon.classList.add("text-sm");
+          const pop = t.querySelector("span.tip-pop");
+          if (pop) {
+            pop.classList.add(
+              "pointer-events-none",
+              "absolute",
+              "left-1/2",
+              "top-full",
+              "z-50",
+              "mt-2",
+              "w-72",
+              "-translate-x-1/2",
+              "rounded-lg",
+              "border",
+              "border-slate-200",
+              "bg-white",
+              "px-3",
+              "py-2",
+              "text-xs",
+              "text-slate-700",
+              "shadow-md",
+              "shadow-slate-900/10",
+              "opacity-0",
+              "transition",
+              "dark:border-slate-800",
+              "dark:bg-slate-900",
+              "dark:text-slate-200",
+              "dark:shadow-black/30"
+            );
+            t.classList.add("group");
+            pop.classList.add("group-hover:opacity-100");
+          }
+        });
+
+        // nav 选中态由主脚本 renderNav() 负责（避免重复绑定与轮询）
+      })();
+    </script>
+  </div>
+</body>
+</html>
