@@ -4,7 +4,7 @@
 > **「antigravity更新了，请按 E:\文档\Antigravity管理\提示词-Antigravity更新修复.md 执行」**  
 > （或直接把本文件全文粘贴给 AI）
 >
-> 校订：2026-08-26 · 适配 Antigravity 2.10.0 / antigravity-proxy v2.2 / 自愈脚本 v3.0
+> 校订：2026-08-27 · 适配 Antigravity 2.10.0 / antigravity-proxy v2.2 / 自愈脚本 v3.2
 
 
 
@@ -62,7 +62,7 @@ tail -3 "/e/文档/Antigravity管理/sync.log"
 
 **3-A 安装路径变了**：搜 `C:\Users\Administrator\AppData\Local\Programs\` 下新的 antigravity 目录，找到后改自愈脚本顶部的路径配置，重跑 Step 1。
 
-**3-B 代理端口不在候选清单**（用户用了清单外的代理软件或自定义端口）：脚本顶部 `$candidates` 数组已内置 9 个常见软件默认端口（Clash Verge 7897 / Clash·Mihomo 7890 / v2rayN 10808·10809 / Shadowsocks 1080 / NekoBox 2080 / Hiddify 12334 / Qv2ray 1089 / Mesl 7688）。若仍不在其中，按 `@{ name="名称"; port=端口; type="socks5"或"http" }` 格式加一行，重跑 Step 1。
+**3-B 代理端口不在候选清单**（用户用了清单外的代理软件或自定义端口）：脚本 v3.2 起已内置 9 个常见软件默认端口（Clash Verge 7897 / Clash·Mihomo 7890 / v2rayN 10808·10809 / Shadowsocks 1080 / NekoBox 2080 / Hiddify 12334 / Qv2ray 1089 / Mesl 7688），且清单全失败时会**自动扫描本机所有监听端口**逐个测 http/socks5，自定义端口也能自动识别。仅当动态扫描也找不到（代理没开或节点死了）时才需排查代理软件本身，一般无需改脚本。
 
 **3-C 疑似 DLL 与新版不兼容**（文件都在但代理不通）：
 

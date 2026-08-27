@@ -7,6 +7,10 @@
 #      Google, then align Antigravity's config.json (port + type) with it.
 # Safe to run repeatedly. Pure ASCII content on purpose.
 #
+# v3.2 (2026-08-27): dynamic port-scan fallback added. If none of the 9
+#   default candidates match, enumerate all local listening ports and try
+#   each as http then socks5 - so a proxy on a CUSTOM port is auto-detected
+#   too. Fully portable across machines and non-default setups.
 # v3.1 (2026-08-27): candidate list expanded from 3 to 9 common Windows
 #   proxy apps (Clash/Mihomo 7890, v2rayN HTTP 10809, Shadowsocks 1080,
 #   NekoBox 2080, Hiddify 12334, Qv2ray 1089 added) so it works out of the
@@ -114,7 +118,7 @@ function Test-Candidate([int]$port, [string]$type) {
 }
 
 # --- stage 0: sanity ---
-Write-Host "=== Antigravity Proxy Sync v3.1 ===" -ForegroundColor Yellow
+Write-Host "=== Antigravity Proxy Sync v3.2 ===" -ForegroundColor Yellow
 Write-Host ""
 
 if (-not (Test-Path $installDir)) {
@@ -173,6 +177,28 @@ for ($round = 1; $round -le $retryRounds; $round++) {
     }
     if ($null -ne $winner) { break }
     Write-Host ""
+}
+
+if ($null -eq $winner) {
+    # Fallback: dynamic port scan - covers proxy apps on custom/non-default
+    # ports that are NOT in the fixed candidate list. Enumerate every local
+    # listening port and try each one as an http proxy, then socks5 proxy.
+    Write-Host "No default candidate matched. Scanning all local listening ports..." -ForegroundColor Yellow
+    $skipPorts = @($candidates | ForEach-Object { [int]$_.port })
+    $ports = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty LocalPort -Unique |
+        Where-Object { $_ -ge 1024 -and ($skipPorts -notcontains [int]$_) } |
+        Sort-Object
+    foreach ($p in $ports) {
+        $p = [int]$p
+        foreach ($t in @("http", "socks5")) {
+            if (Test-Candidate -port $p -type $t) {
+                $winner = @{ name = "Custom $p"; port = $p; type = $t }
+                break
+            }
+        }
+        if ($null -ne $winner) { break }
+    }
 }
 
 Write-Host ""

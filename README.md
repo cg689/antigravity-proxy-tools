@@ -10,10 +10,10 @@
 
 ## 原理
 
-本工具集围绕一个自愈脚本 `Sync-AntigravityProxy.ps1`（v3.1）运转，分两个阶段：
+本工具集围绕一个自愈脚本 `Sync-AntigravityProxy.ps1`（v3.2）运转，分两个阶段：
 
 1. **SELF-HEAL（自愈）**：检测安装目录 3 个劫持文件是否缺失，缺失则从本地备份 `antigravity-proxy-setup/extracted/` 自动恢复。
-2. **CALIBRATE（校准）**：依次探测 9 个常见 Windows 代理软件的默认端口——先看端口是否在监听，再实测能否连通 Google（`gstatic.com/generate_204` 返回 204），把 `config.json` 自动指向第一个可用的代理。
+2. **CALIBRATE（校准）**：依次探测 9 个常见 Windows 代理软件的默认端口——先看端口是否在监听，再实测能否连通 Google（`gstatic.com/generate_204` 返回 204），把 `config.json` 自动指向第一个可用的代理。**若 9 个默认端口全部失败，自动进入动态扫描兜底**：枚举本机所有监听端口，逐个用 http/socks5 实测，覆盖「用户改了自定义端口」的场景。
 
    内置候选清单（按优先级）：
 
@@ -57,7 +57,7 @@ Get-Content sync.log -Tail 5
 ## 目录结构
 
 ```
-├── Sync-AntigravityProxy.ps1           # 自愈主脚本 v3.1（唯一需要更新的核心）
+├── Sync-AntigravityProxy.ps1           # 自愈主脚本 v3.2（唯一需要更新的核心）
 ├── Antigravity（自动代理）.cmd          # 日常入口：自愈 + 校准 + 启动
 ├── 切换代理后点我（校准Antigravity）.cmd # 手动入口：自愈 + 校准（不启动）
 ├── antigravity-proxy-setup/
@@ -76,7 +76,7 @@ Get-Content sync.log -Tail 5
 ## 适配说明
 
 - 安装目录**自动探测**：默认 `%LOCALAPPDATA%\Programs\antigravity`，不存在时自动扫描 `%LOCALAPPDATA%\Programs` 下最新的 `antigravity*` 目录，无需改代码。
-- 代理端口**候选清单可扩展**：脚本顶部 `$candidates` 数组是唯一配置点，用其他代理软件只需加一行 `@{ name="..."; port=端口; type="socks5"/"http" }`。
+- 代理端口**候选清单可扩展 + 动态兜底**：默认清单测完若全失败，自动扫描本机所有监听端口实测 http/socks5，**自定义端口也能自动识别**；用清单外软件也无需手动改脚本。
 - 备份目录与日志目录基于脚本自身位置（`$PSScriptRoot`）派生，整个文件夹拷贝到任意位置均可运行。
 - `.cmd` 文件保持纯 ASCII + CRLF（cmd.exe 对 LF 换行解析会出错）；`.ps1` 保持 UTF-8 带 BOM。
 
