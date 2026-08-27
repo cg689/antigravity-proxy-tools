@@ -10,10 +10,24 @@
 
 ## 原理
 
-本工具集围绕一个自愈脚本 `Sync-AntigravityProxy.ps1`（v3.0）运转，分两个阶段：
+本工具集围绕一个自愈脚本 `Sync-AntigravityProxy.ps1`（v3.1）运转，分两个阶段：
 
 1. **SELF-HEAL（自愈）**：检测安装目录 3 个劫持文件是否缺失，缺失则从本地备份 `antigravity-proxy-setup/extracted/` 自动恢复。
-2. **CALIBRATE（校准）**：依次探测 Clash Verge(7897/socks5)、Mesl(7688/http)、v2rayN(10808/socks5) 三个候选端口——先看端口是否在监听，再实测能否连通 Google（`gstatic.com/generate_204` 返回 204），把 `config.json` 自动指向第一个可用的代理。
+2. **CALIBRATE（校准）**：依次探测 9 个常见 Windows 代理软件的默认端口——先看端口是否在监听，再实测能否连通 Google（`gstatic.com/generate_204` 返回 204），把 `config.json` 自动指向第一个可用的代理。
+
+   内置候选清单（按优先级）：
+
+   | 代理软件 | 端口 | 协议 |
+   |---|---|---|
+   | Clash Verge / Rev | 7897 | socks5 |
+   | Clash / Clash for Windows / Mihomo / FlClash | 7890 | http |
+   | v2rayN | 10808 | socks5 |
+   | v2rayN | 10809 | http |
+   | Shadowsocks | 1080 | socks5 |
+   | NekoBox / NekoRay | 2080 | socks5 |
+   | Hiddify-Next | 12334 | socks5 |
+   | Qv2ray | 1089 | socks5 |
+   | Mesl Lite | 7688 | http |
 
 > 校验使用 `socks5h` 而非 `socks5`（远端 DNS 解析），避免国内 DNS 污染造成误判。
 
@@ -21,7 +35,7 @@
 
 ### 日常使用 / Antigravity 更新后
 
-1. 打开任意代理软件（Clash / v2rayN / Mesl，不用开 TUN）
+1. 打开任意代理软件（Clash / v2rayN / Shadowsocks / NekoBox / Hiddify 等，不用开 TUN）
 2. **双击 `Antigravity（自动代理）.cmd`**
 3. 自动完成「恢复劫持文件 → 校准端口 → 启动 Antigravity」
 
@@ -43,7 +57,7 @@ Get-Content sync.log -Tail 5
 ## 目录结构
 
 ```
-├── Sync-AntigravityProxy.ps1           # 自愈主脚本 v3.0（唯一需要更新的核心）
+├── Sync-AntigravityProxy.ps1           # 自愈主脚本 v3.1（唯一需要更新的核心）
 ├── Antigravity（自动代理）.cmd          # 日常入口：自愈 + 校准 + 启动
 ├── 切换代理后点我（校准Antigravity）.cmd # 手动入口：自愈 + 校准（不启动）
 ├── antigravity-proxy-setup/
@@ -62,6 +76,7 @@ Get-Content sync.log -Tail 5
 ## 适配说明
 
 - 安装目录**自动探测**：默认 `%LOCALAPPDATA%\Programs\antigravity`，不存在时自动扫描 `%LOCALAPPDATA%\Programs` 下最新的 `antigravity*` 目录，无需改代码。
+- 代理端口**候选清单可扩展**：脚本顶部 `$candidates` 数组是唯一配置点，用其他代理软件只需加一行 `@{ name="..."; port=端口; type="socks5"/"http" }`。
 - 备份目录与日志目录基于脚本自身位置（`$PSScriptRoot`）派生，整个文件夹拷贝到任意位置均可运行。
 - `.cmd` 文件保持纯 ASCII + CRLF（cmd.exe 对 LF 换行解析会出错）；`.ps1` 保持 UTF-8 带 BOM。
 
@@ -71,7 +86,7 @@ Get-Content sync.log -Tail 5
 |---|---|---|
 | 双击 .cmd 后代理仍不通 | 劫持文件缺失但脚本未提权写入失败 | 以管理员运行 .cmd；或用 PowerShell 提权执行 `Sync-AntigravityProxy.ps1` |
 | DLL 正常但对话报网络错误 | 节点出口 IP 被 Google 判定不可用 | 在代理软件里换「非机房/住宅」节点，与本地配置无关 |
-| 输出 `NO-PROXY` | 三个候选端口都连不通 Google | 检查代理软件是否启动、节点是否存活 |
+| 输出 `NO-PROXY` | 所有候选端口都连不通 Google | 检查代理软件是否启动、节点是否存活 |
 
 ## 上游项目与版权
 

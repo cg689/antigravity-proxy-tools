@@ -25,8 +25,8 @@ ls "/c/Users/Administrator/AppData/Local/Programs/antigravity/" | grep -E "versi
 # ② Antigravity 是否在运行（运行中文件被占用，需先请用户关闭）
 tasklist | grep -i antigravity
 
-# ③ 当前哪个代理端口在监听（Clash=7897 / v2rayN=10808）
-netstat -ano | grep LISTENING | grep -E ":(7897|7688|10808)\s"
+# ③ 当前哪个代理端口在监听（Clash=7897/7890、v2rayN=10808/10809、SS=1080、NekoBox=2080、Hiddify=12334、Qv2ray=1089、Mesl=7688）
+netstat -ano | grep LISTENING | grep -E ":(7897|7890|10808|10809|1080|2080|12334|1089|7688)\s"
 ```
 
 - ① 输出为空或缺文件 → 正常，正是更新导致的，继续 Step 1
@@ -62,7 +62,7 @@ tail -3 "/e/文档/Antigravity管理/sync.log"
 
 **3-A 安装路径变了**：搜 `C:\Users\Administrator\AppData\Local\Programs\` 下新的 antigravity 目录，找到后改自愈脚本顶部的路径配置，重跑 Step 1。
 
-**3-B 代理端口不在候选清单**（用户换了新代理软件）：把新端口加进脚本顶部端口清单，重跑 Step 1。
+**3-B 代理端口不在候选清单**（用户用了清单外的代理软件或自定义端口）：脚本顶部 `$candidates` 数组已内置 9 个常见软件默认端口（Clash Verge 7897 / Clash·Mihomo 7890 / v2rayN 10808·10809 / Shadowsocks 1080 / NekoBox 2080 / Hiddify 12334 / Qv2ray 1089 / Mesl 7688）。若仍不在其中，按 `@{ name="名称"; port=端口; type="socks5"或"http" }` 格式加一行，重跑 Step 1。
 
 **3-C 疑似 DLL 与新版不兼容**（文件都在但代理不通）：
 

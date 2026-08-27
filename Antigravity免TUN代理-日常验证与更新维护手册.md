@@ -23,6 +23,8 @@ Antigravity 及其子进程  →  version.dll（安装目录里的劫持文件�
 
 ## 二、三个代理软件端口速查表（本机实测）
 
+> 📌 本表是本机**实测**的 3 个软件。自愈脚本 v3.1 起已把候选清单扩展到 **9 个常见 Windows 代理软件**（另含 Clash/Mihomo 7890、v2rayN HTTP 10809、Shadowsocks 1080、NekoBox 2080、Hiddify 12334、Qv2ray 1089），其他机器零配置即可自动识别。
+
 | 代理软件 | 安装位置 | 配置里该填的端口 | 端口类型 | 端口配置文件位置（自查用） |
 |---|---|---|---|---|
 | **Clash Verge** | `D:\Software\Clash Verge` | **7897** | mixed（socks5/http 通用） | `%APPDATA%\io.github.clash-verge-rev.clash-verge-rev\verge.yaml` → `verge_mixed_port` |
@@ -79,8 +81,8 @@ curl.exe -x http://127.0.0.1:7688 -s -o NUL -w "%{http_code}" http://www.gstatic
 **你的日常操作**（换代理软件后，共两步）：
 
 1. **双击脚本**：`E:\文档\Antigravity管理\切换代理后点我（校准Antigravity）.cmd`
-   - 脚本按优先级（Clash Verge 7897 → Mesl 7688 → v2rayN 10808）逐个实测：端口在听 **且** 能通 Google（curl 实测返回 204）
-   - **如果第一轮三个端口全没通过，会自动等 5 秒重试**（最多 3 轮），解决刚切完代理软件端口还没起来的情况
+   - 脚本按优先级逐个实测 9 个常见代理软件默认端口（Clash Verge 7897 → Clash/Mihomo 7890 → v2rayN 10808/10809 → Shadowsocks 1080 → NekoBox 2080 → Hiddify 12334 → Qv2ray 1089 → Mesl 7688）：端口在听 **且** 能通 Google（curl 实测返回 204）
+   - **如果第一轮所有端口全没通过，会自动等 5 秒重试**（最多 3 轮），解决刚切完代理软件端口还没起来的情况
    - 窗口会**实时显示**每个端口的检测过程（端口是否在听 → Google 是否可达）
    - 第一个通过的 = 当前生效代理，自动改写 config.json 的 port 和 type
    - 窗口最终显示结果：`OK` / `SWITCHED` = 成功；`NO-PROXY` = 三轮重试后仍不通（先检查软件和节点）

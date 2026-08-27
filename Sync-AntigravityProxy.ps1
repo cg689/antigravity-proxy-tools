@@ -7,6 +7,11 @@
 #      Google, then align Antigravity's config.json (port + type) with it.
 # Safe to run repeatedly. Pure ASCII content on purpose.
 #
+# v3.1 (2026-08-27): candidate list expanded from 3 to 9 common Windows
+#   proxy apps (Clash/Mihomo 7890, v2rayN HTTP 10809, Shadowsocks 1080,
+#   NekoBox 2080, Hiddify 12334, Qv2ray 1089 added) so it works out of the
+#   box on other machines, not just this one. Install dir now auto-detected
+#   via %LOCALAPPDATA% instead of a hard-coded user path.
 # v3.0 (2026-08-26): SELF-HEAL stage added. Antigravity auto-updated on
 #   2026-08-25 and wiped version.dll + config.json from the install dir
 #   (known behaviour, manual section 4.1). Now one double-click restores
@@ -39,10 +44,18 @@ $logFile    = Join-Path $PSScriptRoot 'sync.log'
 $kitFiles = @('version.dll', 'dbghelp.dll', 'config.json')
 
 # Priority order: first candidate that passes BOTH tests wins.
+# Covers common Windows proxy apps and their DEFAULT local ports so it
+# works out-of-the-box for other people, not just this machine.
 $candidates = @(
-    @{ name = "Clash Verge"; port = 7897;  type = "socks5" },
-    @{ name = "Mesl";        port = 7688;  type = "http"   },
-    @{ name = "v2rayN";      port = 10808; type = "socks5" }
+    @{ name = "Clash Verge";  port = 7897;  type = "socks5" },  # Clash Verge / Rev mixed port
+    @{ name = "Clash/Mihomo"; port = 7890;  type = "http"   },  # Clash / Clash for Windows / FlClash mixed port
+    @{ name = "v2rayN";       port = 10808; type = "socks5" },  # v2rayN SOCKS5
+    @{ name = "v2rayN HTTP";  port = 10809; type = "http"   },  # v2rayN HTTP
+    @{ name = "Shadowsocks";  port = 1080;  type = "socks5" },  # shadowsocks-windows
+    @{ name = "NekoBox";      port = 2080;  type = "socks5" },  # NekoBox / NekoRay mixed port
+    @{ name = "Hiddify";      port = 12334; type = "socks5" },  # Hiddify-Next mixed port
+    @{ name = "Qv2ray";       port = 1089;  type = "socks5" },  # Qv2ray SOCKS5
+    @{ name = "Mesl";         port = 7688;  type = "http"   }   # Mesl Lite
 )
 
 # How many seconds to wait and retry if no port is found on first pass.
@@ -101,7 +114,7 @@ function Test-Candidate([int]$port, [string]$type) {
 }
 
 # --- stage 0: sanity ---
-Write-Host "=== Antigravity Proxy Sync v3 ===" -ForegroundColor Yellow
+Write-Host "=== Antigravity Proxy Sync v3.1 ===" -ForegroundColor Yellow
 Write-Host ""
 
 if (-not (Test-Path $installDir)) {
@@ -169,9 +182,10 @@ $curPort = [int]$json.proxy.port
 $curType = [string]$json.proxy.type
 
 if ($null -eq $winner) {
-    Write-Log "NO-PROXY: none of the 3 candidates can reach Google. Config unchanged ($curType/$curPort). Check proxy apps and nodes."
+    $candList = ($candidates | ForEach-Object { "$($_.name):$($_.port)" }) -join ', '
+    Write-Log "NO-PROXY: none of the $($candidates.Count) candidates can reach Google. Config unchanged ($curType/$curPort). Check proxy apps and nodes."
     Write-Host "RESULT: NO-PROXY" -ForegroundColor Red
-    Write-Host "None of the 3 proxy apps (Clash Verge:7897, Mesl:7688, v2rayN:10808) can reach Google." -ForegroundColor Red
+    Write-Host "None of the $($candidates.Count) proxy apps ($candList) can reach Google." -ForegroundColor Red
     Write-Host "Check: 1) Is a proxy app running? 2) Is its node alive (not dead/blocked)?" -ForegroundColor Red
     if ($redeployed) {
         Write-Host "Note: hijack kit WAS restored, so the DLL part is fixed - only the proxy app side needs attention." -ForegroundColor Yellow
