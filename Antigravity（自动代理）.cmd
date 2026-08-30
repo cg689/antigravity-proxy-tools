@@ -1,8 +1,9 @@
 @echo off
-rem Antigravity launcher with proxy auto-sync (rebuilt 2026-08-26).
-rem v2: the sync script now SELF-HEALS after Antigravity updates
-rem (restores version.dll / dbghelp.dll / config.json from backup,
-rem then calibrates the proxy port), so this launcher alone is enough:
-rem update happened -> just start Antigravity from here as usual.
+rem Antigravity launcher with proxy auto-sync (2026-08-30).
+rem Runs Sync-AntigravityProxy.ps1 (v3.3), which SELF-HEALS after
+rem Antigravity updates (restores version.dll / dbghelp.dll / config.json
+rem from backup, then auto-calibrates the proxy port among 9 common apps
+rem plus a dynamic full-port scan), then launches Antigravity.
+rem Update happened -> just double-click this file as usual.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Sync-AntigravityProxy.ps1"
 start "" "%LOCALAPPDATA%\Programs\antigravity\Antigravity.exe"

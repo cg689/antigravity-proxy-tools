@@ -7,6 +7,13 @@
 #      Google, then align Antigravity's config.json (port + type) with it.
 # Safe to run repeatedly. Pure ASCII content on purpose.
 #
+# v3.3 (2026-08-30): code-review hardening.
+#   - Field-level config.json edit (regex replace of port/type only, no
+#     full ConvertTo-Json rewrite that could mangle a future config shape)
+#   - Async port probe with a 1.5s cap (TcpClient default blocks ~21s)
+#   - Explicit error handling when config.json is missing/unreadable/corrupt
+#   - Single-instance mutex (double-click can't race on config.json/log)
+#   - Dynamic scan skips known DB/service ports + uses a shorter 2s timeout
 # v3.2 (2026-08-27): dynamic port-scan fallback added. If none of the 9
 #   default candidates match, enumerate all local listening ports and try
 #   each as http then socks5 - so a proxy on a CUSTOM port is auto-detected
@@ -29,6 +36,15 @@
 #   retry rounds for proxy port warmup after switching proxy apps.
 
 $ErrorActionPreference = 'SilentlyContinue'
+
+# --- single-instance guard: prevent two concurrent runs (e.g. double-click
+# --- twice) from racing on config.json / sync.log. Local namespace, so it
+# --- works without admin privileges. ---
+$mutex = New-Object System.Threading.Mutex($false, "AntigravityProxySync")
+if (-not $mutex.WaitOne(0)) {
+    Write-Host "Another instance of this script is already running. Exiting." -ForegroundColor Yellow
+    exit 0
+}
 
 # --- paths (install dir auto-detected, no hard-coded user name; backup = next to this script) ---
 $installDir = Join-Path $env:LOCALAPPDATA 'Programs\antigravity'
@@ -85,8 +101,15 @@ function Test-PortFast([int]$port) {
     # - Returns clean boolean, no noise
     try {
         $tcp = New-Object System.Net.Sockets.TcpClient
-        $tcp.Connect("127.0.0.1", $port)
-        $ok = $tcp.Connected
+        # Async connect with a 1.5s cap: a firewalled (DROP-ed) port would
+        # otherwise block on TcpClient.Connect for its ~21s default timeout,
+        # which would stall the whole full-port scan.
+        $iar = $tcp.BeginConnect("127.0.0.1", $port, $null, $null)
+        $ok = $iar.AsyncWaitHandle.WaitOne(1500, $false)
+        if ($ok) {
+            $tcp.EndConnect($iar)
+            $ok = $tcp.Connected
+        }
         $tcp.Close()
         return $ok
     } catch {
@@ -94,7 +117,7 @@ function Test-PortFast([int]$port) {
     }
 }
 
-function Test-Candidate([int]$port, [string]$type) {
+function Test-Candidate([int]$port, [string]$type, [int]$timeoutSec = 5) {
     # Layer 1: is anything listening on 127.0.0.1:port?
     if (-not (Test-PortFast $port)) {
         Write-Host "  [$port/$type] port not listening" -ForegroundColor DarkGray
@@ -107,7 +130,7 @@ function Test-Candidate([int]$port, [string]$type) {
     $scheme = $type
     if ($type -eq "socks5") { $scheme = "socks5h" }
     $proxyUrl = ("{0}://127.0.0.1:{1}" -f $scheme, $port)
-    $code = & curl.exe -x $proxyUrl -s -o NUL -w "%{http_code}" --connect-timeout 5 "http://www.gstatic.com/generate_204" 2>$null
+    $code = & curl.exe -x $proxyUrl -s -o NUL -w "%{http_code}" --connect-timeout $timeoutSec "http://www.gstatic.com/generate_204" 2>$null
     if ($code -eq "204") {
         Write-Host "  [$port/$type] Google OK (204)" -ForegroundColor Green
         return $true
@@ -118,7 +141,7 @@ function Test-Candidate([int]$port, [string]$type) {
 }
 
 # --- stage 0: sanity ---
-Write-Host "=== Antigravity Proxy Sync v3.2 ===" -ForegroundColor Yellow
+Write-Host "=== Antigravity Proxy Sync v3.3 ===" -ForegroundColor Yellow
 Write-Host ""
 
 if (-not (Test-Path $installDir)) {
@@ -185,14 +208,19 @@ if ($null -eq $winner) {
     # listening port and try each one as an http proxy, then socks5 proxy.
     Write-Host "No default candidate matched. Scanning all local listening ports..." -ForegroundColor Yellow
     $skipPorts = @($candidates | ForEach-Object { [int]$_.port })
+    # Common DB / system-service ports that are never a proxy. Skipping them
+    # avoids burning a 2x timeout on each one during the full-port scan.
+    $knownNonProxy = @(135, 139, 445, 1433, 1521, 3306, 3389, 5432, 6379, 27017, 9200)
     $ports = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
         Select-Object -ExpandProperty LocalPort -Unique |
-        Where-Object { $_ -ge 1024 -and ($skipPorts -notcontains [int]$_) } |
+        Where-Object { $_ -ge 1024 -and ($skipPorts -notcontains [int]$_) -and ($knownNonProxy -notcontains [int]$_) } |
         Sort-Object
     foreach ($p in $ports) {
         $p = [int]$p
+        # Shorter 2s timeout here (vs 5s for fixed candidates) to keep the
+        # full-port scan fast on machines with many listening ports.
         foreach ($t in @("http", "socks5")) {
-            if (Test-Candidate -port $p -type $t) {
+            if (Test-Candidate -port $p -type $t -timeoutSec 2) {
                 $winner = @{ name = "Custom $p"; port = $p; type = $t }
                 break
             }
@@ -203,9 +231,28 @@ if ($null -eq $winner) {
 
 Write-Host ""
 
-$json = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
-$curPort = [int]$json.proxy.port
-$curType = [string]$json.proxy.type
+# Read config as raw text and extract port/type via regex (field-level,
+# keep original bytes). This avoids a ConvertFrom-Json -> ConvertTo-Json
+# full rewrite, which could mangle the file if Antigravity changes its
+# config shape in a future update (single-element arrays, depth > 10, etc).
+try {
+    $raw = Get-Content $configPath -Raw -Encoding UTF8
+} catch {
+    Write-Log "ERROR: cannot read config.json: $configPath ($($_.Exception.Message))"
+    Write-Host "ERROR: cannot read config.json: $configPath" -ForegroundColor Red
+    exit 1
+}
+$curPort = 0
+$curType = ''
+$m = [regex]::Match($raw, '"port"\s*:\s*(\d+)')
+if ($m.Success) { $curPort = [int]$m.Groups[1].Value }
+$m = [regex]::Match($raw, '"type"\s*:\s*"([^"]+)"')
+if ($m.Success) { $curType = $m.Groups[1].Value }
+if ($curPort -le 0 -or [string]::IsNullOrEmpty($curType)) {
+    Write-Log "ERROR: config.json has no valid port/type - file may be corrupt. Not touching it."
+    Write-Host "ERROR: config.json 缺少有效 port/type，疑似损坏，未做修改。请检查备份。" -ForegroundColor Red
+    exit 1
+}
 
 if ($null -eq $winner) {
     $candList = ($candidates | ForEach-Object { "$($_.name):$($_.port)" }) -join ', '
@@ -229,9 +276,12 @@ if ($curPort -eq $winner.port -and $curType -eq $winner.type) {
     exit 0
 }
 
-$json.proxy.port = $winner.port
-$json.proxy.type = $winner.type
-$json | ConvertTo-Json -Depth 10 | Set-Content $configPath -Encoding UTF8
+# Field-level rewrite: replace only the port and type values, preserving
+# every other byte (comments, indentation, key order) exactly as-is.
+$newRaw = [regex]::Replace($raw, '("port"\s*:\s*)\d+', ('${1}' + $winner.port))
+$newRaw = [regex]::Replace($newRaw, '("type"\s*:\s*)"[^"]*"', ('${1}"' + $winner.type + '"'))
+$utf8Bom = New-Object System.Text.UTF8Encoding($true)
+[System.IO.File]::WriteAllText($configPath, $newRaw, $utf8Bom)
 Write-Log ("SWITCHED: {0}/{1} -> {2} {3}://127.0.0.1:{4} . Restart Antigravity to apply." -f $curType, $curPort, $winner.name, $winner.type, $winner.port)
 Write-Host "RESULT: SWITCHED" -ForegroundColor Green
 Write-Host "$curType/$curPort -> $($winner.name) $($winner.type)://127.0.0.1:$($winner.port)" -ForegroundColor Green
