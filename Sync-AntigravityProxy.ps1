@@ -250,7 +250,7 @@ $m = [regex]::Match($raw, '"type"\s*:\s*"([^"]+)"')
 if ($m.Success) { $curType = $m.Groups[1].Value }
 if ($curPort -le 0 -or [string]::IsNullOrEmpty($curType)) {
     Write-Log "ERROR: config.json has no valid port/type - file may be corrupt. Not touching it."
-    Write-Host "ERROR: config.json 缺少有效 port/type，疑似损坏，未做修改。请检查备份。" -ForegroundColor Red
+    Write-Host "ERROR: config.json has no valid port/type - file may be corrupt. Not touched. Check the backup." -ForegroundColor Red
     exit 1
 }
 
